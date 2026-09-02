@@ -4,6 +4,7 @@ import { ApiError } from "../../lib/apiError.js";
 import { buildPaginationMeta, parsePagination } from "../../lib/pagination.js";
 import { sendSuccess } from "../../lib/response.js";
 import type { AuthUser } from "../../middleware/auth.js";
+import type { NoteFile } from "../../types/index.js";
 import * as notesService from "./notes.service.js";
 
 const noteTypeEnum = z.enum(["lecture_notes", "pyq", "lab_manual", "assignment", "book", "other"]);
@@ -188,3 +189,128 @@ export async function deleteNote(req: Request, res: Response, next: NextFunction
 }
 
 export { loadNoteOr404 };
+
+const requestFilesSchema = z.object({
+  files: z
+    .array(
+      z.object({
+        original_filename: z.string().min(1).max(255),
+        mime_type: z.string().min(1).max(120),
+      })
+    )
+    .min(1)
+    .max(10),
+});
+
+export async function requestFiles(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (!req.user) throw new ApiError(401, "UNAUTHENTICATED", "Authentication required");
+    const note = await loadNoteOr404(req.params.id);
+
+    if (note.uploader_id !== req.user.id) {
+      throw new ApiError(403, "FORBIDDEN", "Only the uploader may add files to this note");
+    }
+    if (note.status !== "pending") {
+      throw new ApiError(403, "FORBIDDEN", "Files can only be added while the note is pending review");
+    }
+
+    const { files } = requestFilesSchema.parse(req.body);
+    const results = await notesService.createPendingFiles(note.id, files);
+    sendSuccess(res, results, 201);
+  } catch (err) {
+    next(err);
+  }
+}
+
+const completeFileSchema = z.object({ size_bytes: z.number().int().positive() });
+
+export async function completeFile(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (!req.user) throw new ApiError(401, "UNAUTHENTICATED", "Authentication required");
+    const note = await loadNoteOr404(req.params.id);
+    if (note.uploader_id !== req.user.id) {
+      throw new ApiError(403, "FORBIDDEN", "Only the uploader may confirm uploads for this note");
+    }
+
+    const fileIdResult = idParamSchema.safeParse(req.params.fileId);
+    if (!fileIdResult.success) throw new ApiError(400, "VALIDATION_ERROR", "File id must be a UUID");
+
+    const file: NoteFile | null = await notesService.getFileById(fileIdResult.data);
+    if (!file || file.note_id !== note.id) throw new ApiError(404, "NOT_FOUND", "File not found");
+
+    const { size_bytes } = completeFileSchema.parse(req.body);
+    const updated = await notesService.completeFileUpload(file.id, size_bytes);
+    sendSuccess(res, updated);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function downloadFile(req: Request, res: Response, next: NextFunction) {
+  try {
+    const note = await loadNoteOr404(req.params.id);
+
+    if (note.status !== "approved") {
+      const isOwner = req.user?.id === note.uploader_id;
+      const isPrivileged = !!req.user && isPrivilegedRole(req.user.role);
+
+      if (!isOwner && !isPrivileged) {
+        throw new ApiError(404, "NOT_FOUND", "Note not found");
+      }
+
+      // For privileged roles (non-owner), check scope
+      if (isPrivileged && !isOwner) {
+        const scope = await notesService.getNoteScope(note.id);
+        if (!scope) {
+          throw new ApiError(404, "NOT_FOUND", "Note not found");
+        }
+
+        const userRole = req.user!.role;
+        if (userRole === "superuser") {
+          // Superuser sees everything
+        } else if (userRole === "branch_admin" && req.user!.branchId !== scope.branchId) {
+          throw new ApiError(404, "NOT_FOUND", "Note not found");
+        } else if (userRole === "program_admin" && req.user!.programId !== scope.programId) {
+          throw new ApiError(404, "NOT_FOUND", "Note not found");
+        }
+      }
+    }
+
+    const fileIdResult = idParamSchema.safeParse(req.params.fileId);
+    if (!fileIdResult.success) throw new ApiError(400, "VALIDATION_ERROR", "File id must be a UUID");
+
+    const file: NoteFile | null = await notesService.getFileById(fileIdResult.data);
+    if (!file || file.note_id !== note.id || file.upload_status !== "uploaded") {
+      throw new ApiError(404, "NOT_FOUND", "File not found");
+    }
+
+    const url = await notesService.getDownloadUrl(file.s3_key);
+    await notesService.incrementDownloadCount(note.id);
+    sendSuccess(res, { url });
+  } catch (err) {
+    next(err);
+  }
+}
+
+const reviewSchema = z
+  .object({
+    decision: z.enum(["approved", "rejected"]),
+    rejection_reason: z.string().min(1).max(1000).optional(),
+  })
+  .refine((data) => data.decision !== "rejected" || !!data.rejection_reason, {
+    message: "rejection_reason is required when decision is 'rejected'",
+    path: ["rejection_reason"],
+  });
+
+export async function reviewNote(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (!req.user) throw new ApiError(401, "UNAUTHENTICATED", "Authentication required");
+    const note = await loadNoteOr404(req.params.id);
+    const input = reviewSchema.parse(req.body);
+
+    const updated = await notesService.reviewNote(note.id, req.user.id, input.decision, input.rejection_reason ?? null);
+    sendSuccess(res, updated);
+  } catch (err) {
+    next(err);
+  }
+}

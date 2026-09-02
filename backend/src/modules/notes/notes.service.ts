@@ -1,7 +1,9 @@
 import { pool } from "../../config/db.js";
 import { ApiError } from "../../lib/apiError.js";
 import type { AuthUser } from "../../middleware/auth.js";
-import type { Note, NoteType, NoteStatus } from "../../types/index.js";
+import type { Note, NoteType, NoteStatus, NoteFile } from "../../types/index.js";
+import { buildNoteFileKey, getPresignedGetUrl, getPresignedPutUrl } from "../../lib/s3.js";
+import { env } from "../../config/env.js";
 
 const NOTE_COLUMNS = `id, subject_id, uploader_id, title, description, note_type, exam_year,
   status, reviewed_by, reviewed_at, rejection_reason, download_count, created_at, updated_at`;
@@ -153,4 +155,71 @@ export async function updateNote(id: string, input: UpdateNoteInput): Promise<No
 export async function deleteNote(id: string): Promise<boolean> {
   const { rowCount } = await pool.query(`DELETE FROM notes WHERE id = $1`, [id]);
   return (rowCount ?? 0) > 0;
+}
+
+const FILE_COLUMNS = `id, note_id, s3_bucket, s3_key, original_filename, mime_type, size_bytes,
+  checksum_sha256, page_count, sort_order, upload_status, uploaded_at, created_at`;
+
+export interface RequestFileInput {
+  original_filename: string;
+  mime_type: string;
+}
+
+export async function createPendingFiles(
+  noteId: string,
+  files: RequestFileInput[]
+): Promise<Array<{ file: NoteFile; putUrl: string }>> {
+  const results: Array<{ file: NoteFile; putUrl: string }> = [];
+  for (const [index, f] of files.entries()) {
+    const key = buildNoteFileKey(noteId, f.original_filename);
+    const { rows } = await pool.query<NoteFile>(
+      `INSERT INTO files (note_id, s3_bucket, s3_key, original_filename, mime_type, sort_order)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING ${FILE_COLUMNS}`,
+      [noteId, env.AWS_S3_BUCKET, key, f.original_filename, f.mime_type, index]
+    );
+    // INSERT ... RETURNING always returns exactly one row on success.
+    const file = rows[0]!;
+    const putUrl = await getPresignedPutUrl(key, f.mime_type);
+    results.push({ file, putUrl });
+  }
+  return results;
+}
+
+export async function getFileById(fileId: string): Promise<NoteFile | null> {
+  const { rows } = await pool.query<NoteFile>(`SELECT ${FILE_COLUMNS} FROM files WHERE id = $1`, [fileId]);
+  return rows[0] ?? null;
+}
+
+export async function completeFileUpload(fileId: string, sizeBytes: number): Promise<NoteFile | null> {
+  const { rows } = await pool.query<NoteFile>(
+    `UPDATE files SET upload_status = 'uploaded', size_bytes = $1, uploaded_at = now()
+     WHERE id = $2 RETURNING ${FILE_COLUMNS}`,
+    [sizeBytes, fileId]
+  );
+  return rows[0] ?? null;
+}
+
+export async function getDownloadUrl(s3Key: string): Promise<string> {
+  return getPresignedGetUrl(s3Key);
+}
+
+export async function incrementDownloadCount(noteId: string): Promise<void> {
+  await pool.query(`UPDATE notes SET download_count = download_count + 1 WHERE id = $1`, [noteId]);
+}
+
+export async function reviewNote(
+  id: string,
+  reviewerId: string,
+  decision: "approved" | "rejected",
+  rejectionReason: string | null
+): Promise<Note | null> {
+  const { rows } = await pool.query<Note>(
+    `UPDATE notes
+     SET status = $1, reviewed_by = $2, reviewed_at = now(), rejection_reason = $3
+     WHERE id = $4
+     RETURNING ${NOTE_COLUMNS}`,
+    [decision, reviewerId, decision === "rejected" ? rejectionReason : null, id]
+  );
+  return rows[0] ?? null;
 }

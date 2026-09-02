@@ -90,22 +90,16 @@ copy. Every other module (`branches`, `subjects`, `users`, `notes`, `files`,
 `<resource>.routes.ts` stub returning `501`, so the URL space is reserved and
 every resource has a home, but no business logic exists for it yet.
 
-## What's deliberately not here yet
+## Known limitations
 
-- **Auth.** No login, no session/JWT handling, no `req.user`. The schema
-  supports both password and OAuth (`db/migrations/000001_initial_schema.up.sql`'s
-  `users` table), and the
-  access model is role + scope (`superuser` / `program_admin` / `branch_admin`
-  / `student` — see `db/README.md`'s "Access model" section), but translating
-  that into middleware is a design decision on its own, not something to
-  improvise while scaffolding structure.
-- **Request validation** beyond the `:id` presence check in the `programs`
-  controller. The plan is `zod` schemas per endpoint (already a dependency,
-  used today only for env parsing).
-- **The S3 upload flow** described in `db/README.md` (presigned URLs, the
-  `files.upload_status` two-phase commit). `modules/files/` is currently just
-  the `501` stub.
-- Business logic for every module besides `programs`.
+- **Refresh tokens are stateless** — logout is client-side only; a leaked
+  refresh token remains valid until it expires. See
+  `docs/superpowers/specs/2026-09-02-auth-rbac-notes-design.md`.
+- **No stale-upload sweeper yet** — `files.upload_status = 'pending'` rows
+  from abandoned uploads are not automatically cleaned up. The index
+  (`idx_files_stale_uploads`) is in place for when this is added.
+- Business logic for `tags`, `bookmarks`, `ratings`, `comments`, and full CRUD
+  on `branches`/`subjects` is still out of scope — those remain `501` stubs.
 
 ## Extending a stub module
 
