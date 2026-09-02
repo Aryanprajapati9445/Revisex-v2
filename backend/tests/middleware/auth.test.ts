@@ -26,6 +26,15 @@ function buildTestApp() {
     }
   );
 
+  app.get(
+    "/missing/:branchId",
+    requireAuth,
+    requireScope(async () => null),
+    (_req, res) => {
+      res.json({ ok: true });
+    }
+  );
+
   app.get("/public", optionalAuth, (req, res) => {
     res.json({ userId: req.user?.id ?? null });
   });
@@ -91,6 +100,30 @@ describe("requireScope", () => {
       .get("/scoped/33333333-3333-3333-3333-333333333333")
       .set("Authorization", `Bearer ${token}`);
     expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("returns 404 for a genuinely missing resource", async () => {
+    const token = signAccessToken(payload);
+    const res = await request(buildTestApp())
+      .get("/missing/33333333-3333-3333-3333-333333333333")
+      .set("Authorization", `Bearer ${token}`);
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("NOT_FOUND");
+  });
+
+  it("makes an out-of-scope resource indistinguishable from a missing one", async () => {
+    const token = signAccessToken(payload);
+    const [mismatch, missing] = await Promise.all([
+      request(buildTestApp())
+        .get("/scoped/33333333-3333-3333-3333-333333333333")
+        .set("Authorization", `Bearer ${token}`),
+      request(buildTestApp())
+        .get("/missing/33333333-3333-3333-3333-333333333333")
+        .set("Authorization", `Bearer ${token}`),
+    ]);
+    expect(mismatch.status).toBe(missing.status);
+    expect(mismatch.body).toEqual(missing.body);
   });
 
   it("superuser bypasses scope checks", async () => {
