@@ -39,6 +39,16 @@ describe("GET /api/programs", () => {
     expect(res.body.data.items).toHaveLength(1);
     expect(res.body.data.pagination).toEqual({ page: 2, limit: 2, total: 3, totalPages: 2 });
   });
+
+  it("returns 422 in the standard error envelope for an out-of-range limit", async () => {
+    const res = await request(app).get("/api/programs?limit=1000");
+
+    expect(res.status).toBe(422);
+    expect(res.body).toEqual({
+      success: false,
+      error: { code: "VALIDATION_ERROR", message: expect.any(String) },
+    });
+  });
 });
 
 describe("GET /api/programs/:id", () => {
