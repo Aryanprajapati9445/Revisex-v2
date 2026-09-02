@@ -1,10 +1,12 @@
 import { Router } from "express";
+import { optionalAuth, requireAuth } from "../../middleware/auth.js";
+import * as controller from "./notes.controller.js";
 
-// Stub — not implemented yet. Wire up notes.controller.ts / notes.service.ts
-// following the pattern in modules/programs/ once the design for this
-// resource (validation, auth/scope rules) is settled.
 export const notesRouter = Router();
 
-notesRouter.use((_req, res) => {
-  res.status(501).json({ error: "notes endpoints not implemented yet" });
-});
+notesRouter.get("/", optionalAuth, controller.listNotes);
+notesRouter.get("/:id", optionalAuth, controller.getNote);
+
+notesRouter.post("/", requireAuth, controller.createNote);
+notesRouter.patch("/:id", requireAuth, controller.updateNote);
+notesRouter.delete("/:id", requireAuth, controller.deleteNote);
