@@ -1,24 +1,34 @@
 import type { NextFunction, Request, Response } from "express";
+import { ZodError } from "zod";
 import { env } from "../config/env.js";
-
-export class HttpError extends Error {
-  constructor(public status: number, message: string) {
-    super(message);
-  }
-}
+import { ApiError } from "../lib/apiError.js";
 
 // Express identifies error-handling middleware by arity (4 params) — _req and
 // _next must stay even though this function doesn't use them.
-export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction) {
-  const status = err instanceof HttpError ? err.status : 500;
-  const message = err instanceof Error ? err.message : "Internal server error";
-
-  if (status >= 500) {
-    console.error(err);
+export function errorHandler(err: unknown, _req: Request, res: Response, _next: NextFunction): void {
+  if (err instanceof ApiError) {
+    res.status(err.status).json({ success: false, error: { code: err.code, message: err.message } });
+    return;
   }
 
-  res.status(status).json({
-    error: message,
-    ...(env.NODE_ENV === "development" && err instanceof Error ? { stack: err.stack } : {}),
+  if (err instanceof ZodError) {
+    const first = err.issues[0];
+    res.status(422).json({
+      success: false,
+      error: {
+        code: "VALIDATION_ERROR",
+        message: first ? `${first.path.join(".")}: ${first.message}` : "Validation failed",
+      },
+    });
+    return;
+  }
+
+  console.error(err);
+  res.status(500).json({
+    success: false,
+    error: {
+      code: "INTERNAL_ERROR",
+      message: env.NODE_ENV === "development" && err instanceof Error ? err.message : "Internal server error",
+    },
   });
 }
