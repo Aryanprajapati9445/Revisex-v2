@@ -209,6 +209,11 @@ describe("GET /api/notes/:id/files/:fileId/download", () => {
       .send({ files: [{ original_filename: "lecture1.pdf", mime_type: "application/pdf" }] });
     const fileId = requestRes.body.data[0].file.id;
 
+    await request(app)
+      .post(`/api/notes/${note.id}/files/${fileId}/complete`)
+      .set("Authorization", authHeader(student))
+      .send({ size_bytes: 100 });
+
     const res = await request(app)
       .get(`/api/notes/${note.id}/files/${fileId}/download`)
       .set("Authorization", authHeader(otherBranchAdmin));
