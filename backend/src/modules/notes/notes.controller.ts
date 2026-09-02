@@ -25,9 +25,26 @@ async function loadNoteOr404(id: unknown) {
   return note;
 }
 
+/**
+ * Whether a privileged user's own program/branch scope covers the given note.
+ * Superusers are exempt (always in scope). Callers still need to decide
+ * separately whether the user is even a privileged role or the note's owner —
+ * this only answers the scope question for an admin who is neither.
+ */
+async function isNoteInScope(user: AuthUser, noteId: string): Promise<boolean> {
+  if (user.role === "superuser") return true;
+
+  const scope = await notesService.getNoteScope(noteId);
+  if (!scope) return false;
+
+  if (user.role === "branch_admin") return user.branchId === scope.branchId;
+  if (user.role === "program_admin") return user.programId === scope.programId;
+  return false;
+}
+
 const createNoteSchema = z.object({
   subject_id: z.string().uuid(),
-  title: z.string().min(1).max(200),
+  title: z.string().trim().min(1).max(200),
   description: z.string().max(5000).nullable().optional(),
   note_type: noteTypeEnum.default("other"),
   exam_year: z.number().int().min(1950).max(2200).nullable().optional(),
@@ -86,19 +103,8 @@ export async function getNote(req: Request, res: Response, next: NextFunction) {
 
       // For privileged roles (non-owner), check scope
       if (isPrivileged && !isOwner) {
-        const scope = await notesService.getNoteScope(note.id);
-        if (!scope) {
-          throw new ApiError(404, "NOT_FOUND", "Note not found");
-        }
-
-        const userRole = req.user!.role;
-        if (userRole === "superuser") {
-          // Superuser sees everything
-        } else if (userRole === "branch_admin" && req.user!.branchId !== scope.branchId) {
-          throw new ApiError(404, "NOT_FOUND", "Note not found");
-        } else if (userRole === "program_admin" && req.user!.programId !== scope.programId) {
-          throw new ApiError(404, "NOT_FOUND", "Note not found");
-        }
+        const inScope = await isNoteInScope(req.user!, note.id);
+        if (!inScope) throw new ApiError(404, "NOT_FOUND", "Note not found");
       }
     }
 
@@ -109,7 +115,7 @@ export async function getNote(req: Request, res: Response, next: NextFunction) {
 }
 
 const updateNoteSchema = z.object({
-  title: z.string().min(1).max(200).optional(),
+  title: z.string().trim().min(1).max(200).optional(),
   description: z.string().max(5000).nullable().optional(),
   note_type: noteTypeEnum.optional(),
   exam_year: z.number().int().min(1950).max(2200).nullable().optional(),
@@ -128,21 +134,13 @@ export async function updateNote(req: Request, res: Response, next: NextFunction
       throw new ApiError(403, "FORBIDDEN", "This note has already been reviewed and can no longer be edited");
     }
 
-    // For privileged roles (non-owner), check scope
+    // For privileged roles (non-owner), check scope. This is a masking
+    // decision (same as getNote/downloadFile), so an out-of-scope admin gets
+    // the same 404 a non-existent note would — not a 403 that would confirm
+    // the note exists somewhere outside their scope.
     if (!isOwner && isPrivilegedRole(req.user.role)) {
-      const scope = await notesService.getNoteScope(note.id);
-      if (!scope) {
-        throw new ApiError(403, "FORBIDDEN", "This note is outside your scope");
-      }
-
-      const userRole = req.user.role;
-      if (userRole === "superuser") {
-        // Superuser can edit anything
-      } else if (userRole === "branch_admin" && req.user.branchId !== scope.branchId) {
-        throw new ApiError(403, "FORBIDDEN", "This note is outside your scope");
-      } else if (userRole === "program_admin" && req.user.programId !== scope.programId) {
-        throw new ApiError(403, "FORBIDDEN", "This note is outside your scope");
-      }
+      const inScope = await isNoteInScope(req.user, note.id);
+      if (!inScope) throw new ApiError(404, "NOT_FOUND", "Note not found");
     }
 
     const input = updateNoteSchema.parse(req.body);
@@ -164,21 +162,11 @@ export async function deleteNote(req: Request, res: Response, next: NextFunction
       throw new ApiError(403, "FORBIDDEN", "You may not delete this note");
     }
 
-    // For privileged roles (non-owner), check scope
+    // For privileged roles (non-owner), check scope — masked as 404, matching
+    // getNote/downloadFile/updateNote (see comment in updateNote above).
     if (!isOwner && isPrivilegedRole(req.user.role)) {
-      const scope = await notesService.getNoteScope(note.id);
-      if (!scope) {
-        throw new ApiError(403, "FORBIDDEN", "This note is outside your scope");
-      }
-
-      const userRole = req.user.role;
-      if (userRole === "superuser") {
-        // Superuser can delete anything
-      } else if (userRole === "branch_admin" && req.user.branchId !== scope.branchId) {
-        throw new ApiError(403, "FORBIDDEN", "This note is outside your scope");
-      } else if (userRole === "program_admin" && req.user.programId !== scope.programId) {
-        throw new ApiError(403, "FORBIDDEN", "This note is outside your scope");
-      }
+      const inScope = await isNoteInScope(req.user, note.id);
+      if (!inScope) throw new ApiError(404, "NOT_FOUND", "Note not found");
     }
 
     await notesService.deleteNote(note.id);
@@ -231,6 +219,9 @@ export async function completeFile(req: Request, res: Response, next: NextFuncti
     if (note.uploader_id !== req.user.id) {
       throw new ApiError(403, "FORBIDDEN", "Only the uploader may confirm uploads for this note");
     }
+    if (note.status !== "pending") {
+      throw new ApiError(403, "FORBIDDEN", "Files can only be completed while the note is pending review");
+    }
 
     const fileIdResult = idParamSchema.safeParse(req.params.fileId);
     if (!fileIdResult.success) throw new ApiError(400, "VALIDATION_ERROR", "File id must be a UUID");
@@ -240,6 +231,9 @@ export async function completeFile(req: Request, res: Response, next: NextFuncti
 
     const { size_bytes } = completeFileSchema.parse(req.body);
     const updated = await notesService.completeFileUpload(file.id, size_bytes);
+    if (!updated) {
+      throw new ApiError(409, "CONFLICT", "This file has already been marked as uploaded");
+    }
     sendSuccess(res, updated);
   } catch (err) {
     next(err);
@@ -260,19 +254,8 @@ export async function downloadFile(req: Request, res: Response, next: NextFuncti
 
       // For privileged roles (non-owner), check scope
       if (isPrivileged && !isOwner) {
-        const scope = await notesService.getNoteScope(note.id);
-        if (!scope) {
-          throw new ApiError(404, "NOT_FOUND", "Note not found");
-        }
-
-        const userRole = req.user!.role;
-        if (userRole === "superuser") {
-          // Superuser sees everything
-        } else if (userRole === "branch_admin" && req.user!.branchId !== scope.branchId) {
-          throw new ApiError(404, "NOT_FOUND", "Note not found");
-        } else if (userRole === "program_admin" && req.user!.programId !== scope.programId) {
-          throw new ApiError(404, "NOT_FOUND", "Note not found");
-        }
+        const inScope = await isNoteInScope(req.user!, note.id);
+        if (!inScope) throw new ApiError(404, "NOT_FOUND", "Note not found");
       }
     }
 
@@ -295,7 +278,7 @@ export async function downloadFile(req: Request, res: Response, next: NextFuncti
 const reviewSchema = z
   .object({
     decision: z.enum(["approved", "rejected"]),
-    rejection_reason: z.string().min(1).max(1000).optional(),
+    rejection_reason: z.string().trim().min(1).max(1000).optional(),
   })
   .refine((data) => data.decision !== "rejected" || !!data.rejection_reason, {
     message: "rejection_reason is required when decision is 'rejected'",

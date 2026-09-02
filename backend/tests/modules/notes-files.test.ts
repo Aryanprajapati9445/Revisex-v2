@@ -104,6 +104,56 @@ describe("POST /api/notes/:id/files/:fileId/complete", () => {
     expect(completeRes.body.data.upload_status).toBe("uploaded");
     expect(completeRes.body.data.size_bytes).toBe(12345);
   });
+
+  it("forbids completing a file after its note has already been rejected", async () => {
+    const { subject, student, branchAdmin } = await setup();
+    const note = await createPendingNote(subject.id, student.id);
+
+    const requestRes = await request(app)
+      .post(`/api/notes/${note.id}/files`)
+      .set("Authorization", authHeader(student))
+      .send({ files: [{ original_filename: "lecture1.pdf", mime_type: "application/pdf" }] });
+    const fileId = requestRes.body.data[0].file.id;
+
+    await request(app)
+      .post(`/api/notes/${note.id}/review`)
+      .set("Authorization", authHeader(branchAdmin))
+      .send({ decision: "rejected", rejection_reason: "Not clear enough" });
+
+    const completeRes = await request(app)
+      .post(`/api/notes/${note.id}/files/${fileId}/complete`)
+      .set("Authorization", authHeader(student))
+      .send({ size_bytes: 12345 });
+
+    expect(completeRes.status).toBe(403);
+  });
+
+  it("rejects re-completing an already-uploaded file", async () => {
+    const { subject, student } = await setup();
+    const note = await createPendingNote(subject.id, student.id);
+
+    const requestRes = await request(app)
+      .post(`/api/notes/${note.id}/files`)
+      .set("Authorization", authHeader(student))
+      .send({ files: [{ original_filename: "lecture1.pdf", mime_type: "application/pdf" }] });
+    const fileId = requestRes.body.data[0].file.id;
+
+    const firstComplete = await request(app)
+      .post(`/api/notes/${note.id}/files/${fileId}/complete`)
+      .set("Authorization", authHeader(student))
+      .send({ size_bytes: 12345 });
+    expect(firstComplete.status).toBe(200);
+
+    const secondComplete = await request(app)
+      .post(`/api/notes/${note.id}/files/${fileId}/complete`)
+      .set("Authorization", authHeader(student))
+      .send({ size_bytes: 999999 });
+
+    expect(secondComplete.status).toBe(409);
+
+    const { rows } = await pool.query(`SELECT size_bytes FROM files WHERE id = $1`, [fileId]);
+    expect(rows[0].size_bytes).toBe(12345);
+  });
 });
 
 describe("POST /api/notes/:id/review", () => {

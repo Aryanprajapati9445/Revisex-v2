@@ -264,7 +264,7 @@ describe("PATCH /api/notes/:id and DELETE /api/notes/:id", () => {
     expect(res.status).toBe(403);
   });
 
-  it("forbids an out-of-scope branch_admin from patching a note (different branch)", async () => {
+  it("masks an out-of-scope branch_admin's PATCH as a 404 (different branch)", async () => {
     const { subject, student, program } = await setup();
     const otherBranch = await createBranch(program.id);
     const { user: outOfScopeAdmin } = await createUserFixture({ role: "branch_admin", branchId: otherBranch.id });
@@ -279,11 +279,13 @@ describe("PATCH /api/notes/:id and DELETE /api/notes/:id", () => {
       .set("Authorization", authHeader(outOfScopeAdmin))
       .send({ title: "Hijacked" });
 
-    expect(res.status).toBe(403);
-    expect(res.body.error.message).toContain("outside your scope");
+    // Masked as 404 (not 403) to stay consistent with GET/download's
+    // out-of-scope-admin masking — a mismatched scope must not confirm the
+    // note exists somewhere outside the admin's reach.
+    expect(res.status).toBe(404);
   });
 
-  it("forbids an out-of-scope branch_admin from deleting a note (different branch)", async () => {
+  it("masks an out-of-scope branch_admin's DELETE as a 404 (different branch)", async () => {
     const { subject, student, program } = await setup();
     const otherBranch = await createBranch(program.id);
     const { user: outOfScopeAdmin } = await createUserFixture({ role: "branch_admin", branchId: otherBranch.id });
@@ -297,7 +299,29 @@ describe("PATCH /api/notes/:id and DELETE /api/notes/:id", () => {
       .delete(`/api/notes/${rows[0].id}`)
       .set("Authorization", authHeader(outOfScopeAdmin));
 
-    expect(res.status).toBe(403);
-    expect(res.body.error.message).toContain("outside your scope");
+    expect(res.status).toBe(404);
+  });
+
+  it("rejects whitespace-only title on POST /api/notes with 422", async () => {
+    const { subject, student } = await setup();
+
+    const res = await request(app)
+      .post("/api/notes")
+      .set("Authorization", authHeader(student))
+      .send({ subject_id: subject.id, title: "   " });
+
+    expect(res.status).toBe(422);
+  });
+
+  it("returns 400/404 (not 500) for POST /api/notes/:id/review with a malformed UUID", async () => {
+    const { branchAdmin } = await setup();
+
+    const res = await request(app)
+      .post("/api/notes/not-a-uuid/review")
+      .set("Authorization", authHeader(branchAdmin))
+      .send({ decision: "approved" });
+
+    expect(res.status).not.toBe(500);
+    expect([400, 404]).toContain(res.status);
   });
 });
