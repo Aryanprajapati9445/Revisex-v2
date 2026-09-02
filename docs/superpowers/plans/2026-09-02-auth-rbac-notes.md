@@ -763,7 +763,7 @@ Expected: FAIL — `Cannot find module '../../src/lib/jwt.js'`
 - [ ] **Step 9: Implement `backend/src/lib/jwt.ts`**
 
 ```typescript
-import jwt from "jsonwebtoken";
+import jwt, { type SignOptions } from "jsonwebtoken";
 import { env } from "../config/env.js";
 import type { UserRole } from "../types/index.js";
 
@@ -780,11 +780,15 @@ export interface TokenPair {
 }
 
 export function signAccessToken(payload: JwtPayload): string {
-  return jwt.sign(payload, env.JWT_ACCESS_SECRET, { expiresIn: env.JWT_ACCESS_TTL });
+  // @types/jsonwebtoken types expiresIn as a branded StringValue (from the
+  // `ms` package), not a plain string — env.JWT_ACCESS_TTL is a validated
+  // zod string but TS can't narrow it to that brand, so cast the options
+  // object. The value itself is still validated shape (non-empty string).
+  return jwt.sign(payload, env.JWT_ACCESS_SECRET, { expiresIn: env.JWT_ACCESS_TTL } as SignOptions);
 }
 
 export function signRefreshToken(payload: JwtPayload): string {
-  return jwt.sign(payload, env.JWT_REFRESH_SECRET, { expiresIn: env.JWT_REFRESH_TTL });
+  return jwt.sign(payload, env.JWT_REFRESH_SECRET, { expiresIn: env.JWT_REFRESH_TTL } as SignOptions);
 }
 
 export function signTokenPair(payload: JwtPayload): TokenPair {
