@@ -91,6 +91,10 @@ export async function createUser(req: Request, res: Response, next: NextFunction
       if (!input.branch_id) throw new ApiError(422, "VALIDATION_ERROR", "branch_id is required for this role");
       const belongs = await usersService.branchBelongsToProgram(input.branch_id, req.user.programId!);
       if (!belongs) throw new ApiError(403, "FORBIDDEN", "That branch is outside your program");
+      // If program_id is provided, it must match the actor's program
+      if (input.program_id && input.program_id !== req.user.programId) {
+        throw new ApiError(403, "FORBIDDEN", "You cannot create users in a different program");
+      }
     } else if (req.user.role === "branch_admin") {
       if (input.role !== "student") throw new ApiError(403, "FORBIDDEN", "You may only create student accounts");
       if (input.branch_id !== req.user.branchId) {
@@ -122,10 +126,18 @@ async function assertManageable(actor: AuthUser, target: User): Promise<void> {
       target.program_id === actor.programId ||
       (target.branch_id ? await usersService.branchBelongsToProgram(target.branch_id, actor.programId!) : false);
     if (!inScope) throw new ApiError(404, "NOT_FOUND", "User not found");
+    // Reject if target has equal or higher role (cannot manage peers or superiors)
+    if (roleHierarchy[target.role] >= roleHierarchy[actor.role]) {
+      throw new ApiError(403, "FORBIDDEN", "You cannot manage users with equal or higher roles");
+    }
     return;
   }
   if (actor.role === "branch_admin") {
     if (target.branch_id !== actor.branchId) throw new ApiError(404, "NOT_FOUND", "User not found");
+    // Reject if target has equal or higher role (cannot manage peers or superiors)
+    if (roleHierarchy[target.role] >= roleHierarchy[actor.role]) {
+      throw new ApiError(403, "FORBIDDEN", "You cannot manage users with equal or higher roles");
+    }
     return;
   }
   throw new ApiError(403, "FORBIDDEN", "Your role cannot manage users");

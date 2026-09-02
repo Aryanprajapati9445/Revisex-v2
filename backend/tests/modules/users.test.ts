@@ -162,6 +162,87 @@ describe("POST /api/users (admin-created accounts)", () => {
 
     expect(res.status).toBe(201);
   });
+
+  it("forbids a program_admin from creating a user with program_id from a different program", async () => {
+    const programA = await createProgram();
+    const programB = await createProgram();
+    const branchA = await createBranch(programA.id);
+    const { user: adminA } = await createUserFixture({ role: "program_admin", programId: programA.id });
+
+    const res = await request(app)
+      .post("/api/users")
+      .set("Authorization", authHeader(adminA))
+      .send({
+        email: "foreign@test.edu",
+        password: "password123",
+        full_name: "Foreign User",
+        role: "student",
+        branch_id: branchA.id,
+        program_id: programB.id, // Different program
+      });
+
+    expect(res.status).toBe(403);
+  });
+});
+
+describe("PATCH /api/users/:id", () => {
+  it("forbids a branch_admin from patching a peer branch_admin", async () => {
+    const program = await createProgram();
+    const branch = await createBranch(program.id);
+    const { user: admin1 } = await createUserFixture({ role: "branch_admin", branchId: branch.id });
+    const { user: admin2 } = await createUserFixture({ role: "branch_admin", branchId: branch.id });
+
+    const res = await request(app)
+      .patch(`/api/users/${admin2.id}`)
+      .set("Authorization", authHeader(admin1))
+      .send({ full_name: "Hacked" });
+
+    expect(res.status).toBe(403);
+  });
+
+  it("forbids a program_admin from patching a peer program_admin", async () => {
+    const program = await createProgram();
+    const { user: admin1 } = await createUserFixture({ role: "program_admin", programId: program.id });
+    const { user: admin2 } = await createUserFixture({ role: "program_admin", programId: program.id });
+
+    const res = await request(app)
+      .patch(`/api/users/${admin2.id}`)
+      .set("Authorization", authHeader(admin1))
+      .send({ full_name: "Hacked" });
+
+    expect(res.status).toBe(403);
+  });
+
+  it("lets a branch_admin patch a student in their branch", async () => {
+    const program = await createProgram();
+    const branch = await createBranch(program.id);
+    const { user: admin } = await createUserFixture({ role: "branch_admin", branchId: branch.id });
+    const { user: student } = await createUserFixture({ role: "student", branchId: branch.id });
+
+    const res = await request(app)
+      .patch(`/api/users/${student.id}`)
+      .set("Authorization", authHeader(admin))
+      .send({ full_name: "Updated Student" });
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.full_name).toBe("Updated Student");
+  });
+
+  it("returns 422 when patching with non-existent foreign key", async () => {
+    const program = await createProgram();
+    const branch = await createBranch(program.id);
+    const { user: admin } = await createUserFixture({ role: "program_admin", programId: program.id });
+    const { user: student } = await createUserFixture({ role: "student", branchId: branch.id });
+    const fakeId = "00000000-0000-0000-0000-000000000000";
+
+    const res = await request(app)
+      .patch(`/api/users/${student.id}`)
+      .set("Authorization", authHeader(admin))
+      .send({ branch_id: fakeId }); // non-existent branch
+
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+  });
 });
 
 describe("DELETE /api/users/:id", () => {
@@ -176,5 +257,30 @@ describe("DELETE /api/users/:id", () => {
 
     const getRes = await request(app).get("/api/users/me").set("Authorization", authHeader(target));
     expect(getRes.status).toBe(404); // token still parses, but the account is gone on any DB-backed lookup
+  });
+
+  it("forbids a branch_admin from deleting a peer branch_admin", async () => {
+    const program = await createProgram();
+    const branch = await createBranch(program.id);
+    const { user: admin1 } = await createUserFixture({ role: "branch_admin", branchId: branch.id });
+    const { user: admin2 } = await createUserFixture({ role: "branch_admin", branchId: branch.id });
+
+    const res = await request(app).delete(`/api/users/${admin2.id}`).set("Authorization", authHeader(admin1));
+
+    expect(res.status).toBe(403);
+  });
+
+  it("lets a branch_admin delete a student in their branch", async () => {
+    const program = await createProgram();
+    const branch = await createBranch(program.id);
+    const { user: admin } = await createUserFixture({ role: "branch_admin", branchId: branch.id });
+    const { user: student } = await createUserFixture({ role: "student", branchId: branch.id });
+
+    const res = await request(app).delete(`/api/users/${student.id}`).set("Authorization", authHeader(admin));
+
+    expect(res.status).toBe(200);
+
+    const getRes = await request(app).get("/api/users/me").set("Authorization", authHeader(student));
+    expect(getRes.status).toBe(404);
   });
 });

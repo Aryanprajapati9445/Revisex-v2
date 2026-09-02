@@ -128,11 +128,21 @@ export async function updateUser(id: string, input: UpdateUserInput): Promise<Us
   if (sets.length === 0) return getUserById(id);
 
   params.push(id);
-  const { rows } = await pool.query<User>(
-    `UPDATE users SET ${sets.join(", ")} WHERE id = $${params.length} RETURNING ${USER_COLUMNS}`,
-    params
-  );
-  return rows[0] ?? null;
+  try {
+    const { rows } = await pool.query<User>(
+      `UPDATE users SET ${sets.join(", ")} WHERE id = $${params.length} RETURNING ${USER_COLUMNS}`,
+      params
+    );
+    return rows[0] ?? null;
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      throw new ApiError(409, "EMAIL_TAKEN", "An account with this email already exists");
+    }
+    if (isForeignKeyViolation(err)) {
+      throw new ApiError(422, "VALIDATION_ERROR", "program_id or branch_id does not reference an existing row");
+    }
+    throw err;
+  }
 }
 
 export async function deleteUser(id: string): Promise<boolean> {
