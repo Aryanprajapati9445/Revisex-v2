@@ -1,6 +1,7 @@
 # env files (every subproject has its own)
 .env
 **/.env
+backend/.env.test
 
 # Node
 node_modules/
