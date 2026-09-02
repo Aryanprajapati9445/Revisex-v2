@@ -1,0 +1,11 @@
+# env files (every subproject has its own)
+.env
+**/.env
+
+# Node
+node_modules/
+dist/
+npm-debug.log*
+
+# editor / OS
+.DS_Store

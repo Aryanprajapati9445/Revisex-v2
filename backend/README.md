@@ -1,0 +1,121 @@
+# Backend — College Notes Management Platform
+
+REST API in Node.js + TypeScript + Express, backed by the schema in
+[`../db`](../db/README.md).
+
+## Setup
+
+```bash
+npm install
+cp .env.example .env
+# edit .env — DATABASE_URL should be Neon's POOLED connection string
+# (hostname contains "-pooler"). The db/ layer uses the direct string for
+# DDL; this is app runtime traffic, which is what PgBouncer pooling is for.
+npm run dev
+```
+
+## Scripts
+
+| Command | What it does |
+|---|---|
+| `npm run dev` | Runs `src/server.ts` with `tsx watch` — restarts on file change. |
+| `npm run typecheck` | `tsc --noEmit`. No build output, just verifies types. |
+| `npm run build` | Compiles to `dist/`. |
+| `npm start` | Runs the compiled `dist/server.js`. Run `build` first. |
+
+## Verification status
+
+Run and checked directly, not just written:
+
+- `npm install` — clean, 0 vulnerabilities.
+- `npm run typecheck` — passes.
+- **Failure paths**, booted with an unreachable database:
+  - `GET /health` → `200 {"status":"ok"}` — works with no database at all.
+  - `GET /health/db` → `503 {"status":"unreachable"}`, confirming the
+    readiness check actually queries rather than always reporting healthy.
+  - `GET /api/programs` (the wired module) → `500` with the real Postgres
+    error, via `errorHandler` — a query failure returns clean JSON, it does
+    not crash the process.
+  - `GET /api/branches`, `/api/notes` (stubs) → `501` with a per-resource
+    message. `GET /nonexistent` → `404`. `GET /health` again afterward →
+    still `200` — the process survived every case above.
+- **Happy path**, against `db/`'s local sandbox (`make local-reset`) seeded
+  with real data:
+  - `GET /health/db` → `200` — confirms connectivity, not just failure.
+  - `GET /api/programs` → `200` with all 3 seeded programs (BTECH/MBA/MCA),
+    correct fields.
+  - `GET /api/programs/:id` with that id → `200` with the matching row; with
+    a malformed id (`not-a-uuid`) → `400`, not `500`; with a well-formed but
+    nonexistent UUID → `404`.
+  - Caught by this run, not by `tsc` (both were unchecked `pool.query<T>()`
+    assertions — the type was wrong, not the code that used it):
+    `created_at` was coming back as a JS `Date` where `types/index.ts`
+    declares `string`, and `files.size_bytes` (`BIGINT`) was coming back as
+    a `string` where `NoteFile` declares `number`. Both were invisible
+    through `JSON.stringify` — confirmed with `typeof`/`instanceof` against
+    the raw query result, not the HTTP response. Fixed in `config/db.ts` via
+    `pg`'s `types.setTypeParser`, and reconfirmed after the fix that
+    `created_at` now serializes as real ISO 8601 (`...T...Z`), not
+    Postgres's native `+00` text form.
+- Not yet run against a real Neon database — that needs your `DATABASE_URL`
+  in `.env`. Everything above ran against a local, stock-Postgres-16
+  sandbox, which is what `types/index.ts` and `config/db.ts` are written
+  against; nothing in either is Neon-specific.
+
+## Structure
+
+```
+src/
+├── server.ts          entry point — creates the app, starts listening
+├── app.ts             assembles middleware + mounts every module's router
+├── config/
+│   ├── env.ts          loads and validates .env with zod; exits on bad config
+│   └── db.ts            pg Pool, built from DATABASE_URL
+├── middleware/
+│   ├── errorHandler.ts  catches thrown errors -> JSON response
+│   └── notFound.ts       catch-all for unmatched routes
+├── types/
+│   └── index.ts          TS types mirroring the enums and tables in db/migrations/
+└── modules/
+    └── <resource>/
+        ├── <resource>.routes.ts       Express Router, mounted in app.ts
+        ├── <resource>.controller.ts   parses the request, calls the service, shapes the response
+        └── <resource>.service.ts      the actual pg queries
+```
+
+`modules/programs/` is the one resource fully wired end to end
+(`GET /api/programs`, `GET /api/programs/:id`) — read it as the pattern to
+copy. Every other module (`branches`, `subjects`, `users`, `notes`, `files`,
+`tags`, `bookmarks`, `ratings`, `comments`) is currently a single
+`<resource>.routes.ts` stub returning `501`, so the URL space is reserved and
+every resource has a home, but no business logic exists for it yet.
+
+## What's deliberately not here yet
+
+- **Auth.** No login, no session/JWT handling, no `req.user`. The schema
+  supports both password and OAuth (`db/migrations/000001_initial_schema.up.sql`'s
+  `users` table), and the
+  access model is role + scope (`superuser` / `program_admin` / `branch_admin`
+  / `student` — see `db/README.md`'s "Access model" section), but translating
+  that into middleware is a design decision on its own, not something to
+  improvise while scaffolding structure.
+- **Request validation** beyond the `:id` presence check in the `programs`
+  controller. The plan is `zod` schemas per endpoint (already a dependency,
+  used today only for env parsing).
+- **The S3 upload flow** described in `db/README.md` (presigned URLs, the
+  `files.upload_status` two-phase commit). `modules/files/` is currently just
+  the `501` stub.
+- Business logic for every module besides `programs`.
+
+## Extending a stub module
+
+Follow the `programs` module:
+
+1. Write `<resource>.service.ts` — parameterized queries against `pool` from
+   `config/db.ts`, typed against `types/index.ts`.
+2. Write `<resource>.controller.ts` — parse `req.params`/`req.query`/`req.body`,
+   call the service, `next(err)` on failure (`errorHandler` handles the rest).
+3. Replace the stub body in `<resource>.routes.ts` with real routes calling
+   the controller.
+4. Nothing else to wire up — `app.ts` already mounts every router at its
+   `/api/<resource>` path, stub or not.
