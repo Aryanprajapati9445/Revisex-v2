@@ -78,7 +78,27 @@ export async function getNote(req: Request, res: Response, next: NextFunction) {
     if (note.status !== "approved") {
       const isOwner = req.user?.id === note.uploader_id;
       const isPrivileged = !!req.user && isPrivilegedRole(req.user.role);
-      if (!isOwner && !isPrivileged) throw new ApiError(404, "NOT_FOUND", "Note not found");
+
+      if (!isOwner && !isPrivileged) {
+        throw new ApiError(404, "NOT_FOUND", "Note not found");
+      }
+
+      // For privileged roles (non-owner), check scope
+      if (isPrivileged && !isOwner) {
+        const scope = await notesService.getNoteScope(note.id);
+        if (!scope) {
+          throw new ApiError(404, "NOT_FOUND", "Note not found");
+        }
+
+        const userRole = req.user!.role;
+        if (userRole === "superuser") {
+          // Superuser sees everything
+        } else if (userRole === "branch_admin" && req.user!.branchId !== scope.branchId) {
+          throw new ApiError(404, "NOT_FOUND", "Note not found");
+        } else if (userRole === "program_admin" && req.user!.programId !== scope.programId) {
+          throw new ApiError(404, "NOT_FOUND", "Note not found");
+        }
+      }
     }
 
     sendSuccess(res, note);
@@ -107,6 +127,23 @@ export async function updateNote(req: Request, res: Response, next: NextFunction
       throw new ApiError(403, "FORBIDDEN", "This note has already been reviewed and can no longer be edited");
     }
 
+    // For privileged roles (non-owner), check scope
+    if (!isOwner && isPrivilegedRole(req.user.role)) {
+      const scope = await notesService.getNoteScope(note.id);
+      if (!scope) {
+        throw new ApiError(403, "FORBIDDEN", "This note is outside your scope");
+      }
+
+      const userRole = req.user.role;
+      if (userRole === "superuser") {
+        // Superuser can edit anything
+      } else if (userRole === "branch_admin" && req.user.branchId !== scope.branchId) {
+        throw new ApiError(403, "FORBIDDEN", "This note is outside your scope");
+      } else if (userRole === "program_admin" && req.user.programId !== scope.programId) {
+        throw new ApiError(403, "FORBIDDEN", "This note is outside your scope");
+      }
+    }
+
     const input = updateNoteSchema.parse(req.body);
     const updated = await notesService.updateNote(note.id, input);
     if (!updated) throw new ApiError(404, "NOT_FOUND", "Note not found");
@@ -124,6 +161,23 @@ export async function deleteNote(req: Request, res: Response, next: NextFunction
     const isOwner = note.uploader_id === req.user.id;
     if (!isOwner && !isPrivilegedRole(req.user.role)) {
       throw new ApiError(403, "FORBIDDEN", "You may not delete this note");
+    }
+
+    // For privileged roles (non-owner), check scope
+    if (!isOwner && isPrivilegedRole(req.user.role)) {
+      const scope = await notesService.getNoteScope(note.id);
+      if (!scope) {
+        throw new ApiError(403, "FORBIDDEN", "This note is outside your scope");
+      }
+
+      const userRole = req.user.role;
+      if (userRole === "superuser") {
+        // Superuser can delete anything
+      } else if (userRole === "branch_admin" && req.user.branchId !== scope.branchId) {
+        throw new ApiError(403, "FORBIDDEN", "This note is outside your scope");
+      } else if (userRole === "program_admin" && req.user.programId !== scope.programId) {
+        throw new ApiError(403, "FORBIDDEN", "This note is outside your scope");
+      }
     }
 
     await notesService.deleteNote(note.id);

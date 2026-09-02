@@ -129,6 +129,97 @@ describe("GET /api/notes visibility", () => {
   });
 });
 
+describe("GET /api/notes/:id", () => {
+  it("hides a pending note from an anonymous request", async () => {
+    const { subject, student } = await setup();
+    const { rows } = await pool.query(
+      `INSERT INTO notes (subject_id, uploader_id, title, status) VALUES ($1, $2, 'Pending Note', 'pending') RETURNING id`,
+      [subject.id, student.id]
+    );
+
+    const res = await request(app).get(`/api/notes/${rows[0].id}`);
+    expect(res.status).toBe(404);
+  });
+
+  it("lets the owner see their own pending note", async () => {
+    const { subject, student } = await setup();
+    const { rows } = await pool.query(
+      `INSERT INTO notes (subject_id, uploader_id, title, status) VALUES ($1, $2, 'My Draft', 'pending') RETURNING id`,
+      [subject.id, student.id]
+    );
+
+    const res = await request(app)
+      .get(`/api/notes/${rows[0].id}`)
+      .set("Authorization", authHeader(student));
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.title).toBe("My Draft");
+  });
+
+  it("lets an in-scope branch_admin see a pending note", async () => {
+    const { subject, student, branchAdmin } = await setup();
+    const { rows } = await pool.query(
+      `INSERT INTO notes (subject_id, uploader_id, title, status) VALUES ($1, $2, 'Needs Review', 'pending') RETURNING id`,
+      [subject.id, student.id]
+    );
+
+    const res = await request(app)
+      .get(`/api/notes/${rows[0].id}`)
+      .set("Authorization", authHeader(branchAdmin));
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.title).toBe("Needs Review");
+  });
+
+  it("hides a pending note from an out-of-scope branch_admin (different branch)", async () => {
+    const { subject, student, program } = await setup();
+    const otherBranch = await createBranch(program.id);
+    const { user: outOfScopeAdmin } = await createUserFixture({ role: "branch_admin", branchId: otherBranch.id });
+
+    const { rows } = await pool.query(
+      `INSERT INTO notes (subject_id, uploader_id, title, status) VALUES ($1, $2, 'Other Branch Note', 'pending') RETURNING id`,
+      [subject.id, student.id]
+    );
+
+    const res = await request(app)
+      .get(`/api/notes/${rows[0].id}`)
+      .set("Authorization", authHeader(outOfScopeAdmin));
+
+    expect(res.status).toBe(404);
+  });
+
+  it("hides a pending note from an out-of-scope program_admin (different program)", async () => {
+    const { subject, student } = await setup();
+    const otherProgram = await createProgram();
+    const otherBranch = await createBranch(otherProgram.id);
+    const { user: outOfScopeAdmin } = await createUserFixture({ role: "program_admin", programId: otherProgram.id });
+
+    const { rows } = await pool.query(
+      `INSERT INTO notes (subject_id, uploader_id, title, status) VALUES ($1, $2, 'Other Program Note', 'pending') RETURNING id`,
+      [subject.id, student.id]
+    );
+
+    const res = await request(app)
+      .get(`/api/notes/${rows[0].id}`)
+      .set("Authorization", authHeader(outOfScopeAdmin));
+
+    expect(res.status).toBe(404);
+  });
+
+  it("lets an anonymous request see an approved note", async () => {
+    const { subject, student } = await setup();
+    const { rows } = await pool.query(
+      `INSERT INTO notes (subject_id, uploader_id, title, status, reviewed_at) VALUES ($1, $2, 'Approved Note', 'approved', now()) RETURNING id`,
+      [subject.id, student.id]
+    );
+
+    const res = await request(app).get(`/api/notes/${rows[0].id}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.title).toBe("Approved Note");
+  });
+});
+
 describe("PATCH /api/notes/:id and DELETE /api/notes/:id", () => {
   it("lets the owner edit their own pending note", async () => {
     const { subject, student } = await setup();
@@ -171,5 +262,42 @@ describe("PATCH /api/notes/:id and DELETE /api/notes/:id", () => {
 
     const res = await request(app).delete(`/api/notes/${rows[0].id}`).set("Authorization", authHeader(otherStudent));
     expect(res.status).toBe(403);
+  });
+
+  it("forbids an out-of-scope branch_admin from patching a note (different branch)", async () => {
+    const { subject, student, program } = await setup();
+    const otherBranch = await createBranch(program.id);
+    const { user: outOfScopeAdmin } = await createUserFixture({ role: "branch_admin", branchId: otherBranch.id });
+
+    const { rows } = await pool.query(
+      `INSERT INTO notes (subject_id, uploader_id, title, status) VALUES ($1, $2, 'Other Branch Note', 'pending') RETURNING id`,
+      [subject.id, student.id]
+    );
+
+    const res = await request(app)
+      .patch(`/api/notes/${rows[0].id}`)
+      .set("Authorization", authHeader(outOfScopeAdmin))
+      .send({ title: "Hijacked" });
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.message).toContain("outside your scope");
+  });
+
+  it("forbids an out-of-scope branch_admin from deleting a note (different branch)", async () => {
+    const { subject, student, program } = await setup();
+    const otherBranch = await createBranch(program.id);
+    const { user: outOfScopeAdmin } = await createUserFixture({ role: "branch_admin", branchId: otherBranch.id });
+
+    const { rows } = await pool.query(
+      `INSERT INTO notes (subject_id, uploader_id, title, status) VALUES ($1, $2, 'Other Branch Note', 'pending') RETURNING id`,
+      [subject.id, student.id]
+    );
+
+    const res = await request(app)
+      .delete(`/api/notes/${rows[0].id}`)
+      .set("Authorization", authHeader(outOfScopeAdmin));
+
+    expect(res.status).toBe(403);
+    expect(res.body.error.message).toContain("outside your scope");
   });
 });
