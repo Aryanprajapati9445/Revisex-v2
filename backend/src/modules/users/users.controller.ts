@@ -29,7 +29,7 @@ export async function getMe(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-const updateMeSchema = z.object({ full_name: z.string().min(1).max(150) });
+const updateMeSchema = z.object({ full_name: z.string().trim().min(1).max(150) });
 
 export async function updateMe(req: Request, res: Response, next: NextFunction) {
   try {
@@ -71,38 +71,88 @@ export async function listUsers(req: Request, res: Response, next: NextFunction)
 const createUserSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8).max(72),
-  full_name: z.string().min(1).max(150),
+  full_name: z.string().trim().min(1).max(150),
   role: roleEnum,
   program_id: z.string().uuid().nullable().optional(),
   branch_id: z.string().uuid().nullable().optional(),
   enrollment_year: z.number().int().nullable().optional(),
 });
 
+/**
+ * Mirrors the `users_role_scope` CHECK constraint at the application level so a
+ * violation is rejected with a clean 422 before it ever reaches the database.
+ */
+function isRoleScopeCombinationValid(
+  role: UserRole,
+  programId: string | null,
+  branchId: string | null
+): boolean {
+  return (
+    (role === "superuser" && programId === null && branchId === null) ||
+    (role === "program_admin" && programId !== null && branchId === null) ||
+    (role === "branch_admin" && programId === null && branchId !== null) ||
+    (role === "student" && programId === null && branchId !== null)
+  );
+}
+
+/**
+ * Validates that an actor is allowed to create/update a user ending up with the
+ * given (role, program_id, branch_id) combination. Used by both createUser and
+ * updateUser so cross-program/cross-branch privilege escalation is impossible
+ * whether it happens at creation time or via a later PATCH.
+ */
+async function assertRoleScopeAllowed(
+  actor: AuthUser,
+  resultingRole: UserRole,
+  resultingProgramId: string | null,
+  resultingBranchId: string | null
+): Promise<void> {
+  if (roleHierarchy[resultingRole] >= roleHierarchy[actor.role]) {
+    throw new ApiError(403, "FORBIDDEN", "You cannot assign a role equal to or above your own");
+  }
+
+  if (!isRoleScopeCombinationValid(resultingRole, resultingProgramId, resultingBranchId)) {
+    throw new ApiError(422, "VALIDATION_ERROR", "program_id/branch_id combination is not valid for this role");
+  }
+
+  if (actor.role === "superuser") return;
+
+  if (actor.role === "program_admin") {
+    if (resultingBranchId) {
+      // Distinguish "branch doesn't exist" (a validation problem, mirroring the
+      // FK violation the DB would otherwise raise) from "branch exists but
+      // belongs to a different program" (an actual scope violation).
+      const branchProgramId = await usersService.getBranchProgramId(resultingBranchId);
+      if (branchProgramId === null) {
+        throw new ApiError(422, "VALIDATION_ERROR", "branch_id does not reference an existing branch");
+      }
+      if (branchProgramId !== actor.programId) {
+        throw new ApiError(403, "FORBIDDEN", "That branch is outside your program");
+      }
+    }
+    if (resultingProgramId && resultingProgramId !== actor.programId) {
+      throw new ApiError(403, "FORBIDDEN", "You cannot manage users in a different program");
+    }
+    return;
+  }
+
+  if (actor.role === "branch_admin") {
+    if (resultingRole !== "student") throw new ApiError(403, "FORBIDDEN", "You may only manage student accounts");
+    if (resultingBranchId !== actor.branchId) {
+      throw new ApiError(403, "FORBIDDEN", "You may only manage students in your own branch");
+    }
+    return;
+  }
+
+  throw new ApiError(403, "FORBIDDEN", "Your role cannot manage users");
+}
+
 export async function createUser(req: Request, res: Response, next: NextFunction) {
   try {
     if (!req.user) throw new ApiError(401, "UNAUTHENTICATED", "Authentication required");
     const input = createUserSchema.parse(req.body);
 
-    if (roleHierarchy[input.role] >= roleHierarchy[req.user.role]) {
-      throw new ApiError(403, "FORBIDDEN", "You cannot create a user with a role equal to or above your own");
-    }
-
-    if (req.user.role === "program_admin") {
-      if (!input.branch_id) throw new ApiError(422, "VALIDATION_ERROR", "branch_id is required for this role");
-      const belongs = await usersService.branchBelongsToProgram(input.branch_id, req.user.programId!);
-      if (!belongs) throw new ApiError(403, "FORBIDDEN", "That branch is outside your program");
-      // If program_id is provided, it must match the actor's program
-      if (input.program_id && input.program_id !== req.user.programId) {
-        throw new ApiError(403, "FORBIDDEN", "You cannot create users in a different program");
-      }
-    } else if (req.user.role === "branch_admin") {
-      if (input.role !== "student") throw new ApiError(403, "FORBIDDEN", "You may only create student accounts");
-      if (input.branch_id !== req.user.branchId) {
-        throw new ApiError(403, "FORBIDDEN", "You may only create students in your own branch");
-      }
-    } else if (req.user.role !== "superuser") {
-      throw new ApiError(403, "FORBIDDEN", "Your role cannot create users");
-    }
+    await assertRoleScopeAllowed(req.user, input.role, input.program_id ?? null, input.branch_id ?? null);
 
     const user = await usersService.createUser({
       email: input.email,
@@ -144,7 +194,7 @@ async function assertManageable(actor: AuthUser, target: User): Promise<void> {
 }
 
 const updateUserSchema = z.object({
-  full_name: z.string().min(1).max(150).optional(),
+  full_name: z.string().trim().min(1).max(150).optional(),
   role: roleEnum.optional(),
   program_id: z.string().uuid().nullable().optional(),
   branch_id: z.string().uuid().nullable().optional(),
@@ -162,9 +212,14 @@ export async function updateUser(req: Request, res: Response, next: NextFunction
     await assertManageable(req.user, target);
 
     const input = updateUserSchema.parse(req.body);
-    if (input.role && roleHierarchy[input.role] >= roleHierarchy[req.user.role]) {
-      throw new ApiError(403, "FORBIDDEN", "You cannot assign a role equal to or above your own");
-    }
+
+    // A partial PATCH may only send e.g. `role` without `branch_id` — the
+    // resulting scope is the merge of the patch over the target's current
+    // row, since the omitted fields keep their existing values in effect.
+    const resultingRole = input.role ?? target.role;
+    const resultingProgramId = "program_id" in input ? (input.program_id ?? null) : target.program_id;
+    const resultingBranchId = "branch_id" in input ? (input.branch_id ?? null) : target.branch_id;
+    await assertRoleScopeAllowed(req.user, resultingRole, resultingProgramId, resultingBranchId);
 
     const updated = await usersService.updateUser(idResult.data, input);
     sendSuccess(res, updated);

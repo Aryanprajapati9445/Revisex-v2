@@ -43,6 +43,19 @@ describe("GET /api/users/me and PATCH /api/users/me", () => {
     expect(patchRes.status).toBe(200);
     expect(patchRes.body.data.full_name).toBe("Updated Name");
   });
+
+  it("rejects a whitespace-only full_name with 422", async () => {
+    const program = await createProgram();
+    const branch = await createBranch(program.id);
+    const { user } = await createUserFixture({ role: "student", branchId: branch.id });
+
+    const res = await request(app)
+      .patch("/api/users/me")
+      .set("Authorization", authHeader(user))
+      .send({ full_name: "   " });
+
+    expect(res.status).toBe(422);
+  });
 });
 
 describe("GET /api/users (roster)", () => {
@@ -163,7 +176,11 @@ describe("POST /api/users (admin-created accounts)", () => {
     expect(res.status).toBe(201);
   });
 
-  it("forbids a program_admin from creating a user with program_id from a different program", async () => {
+  it("rejects a student payload that also carries a program_id (violates users_role_scope)", async () => {
+    // A student row must have program_id NULL and branch_id set (see the
+    // users_role_scope CHECK constraint) — sending both branch_id and
+    // program_id is an invalid combination regardless of which program_id is
+    // supplied, so this is a validation error, not a scope/authorization one.
     const programA = await createProgram();
     const programB = await createProgram();
     const branchA = await createBranch(programA.id);
@@ -181,7 +198,8 @@ describe("POST /api/users (admin-created accounts)", () => {
         program_id: programB.id, // Different program
       });
 
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(422);
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
   });
 });
 
@@ -242,6 +260,45 @@ describe("PATCH /api/users/:id", () => {
 
     expect(res.status).toBe(422);
     expect(res.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("forbids a program_admin from escalating an in-scope student to branch_admin in a different program", async () => {
+    const programA = await createProgram();
+    const programB = await createProgram();
+    const branchA = await createBranch(programA.id);
+    const branchB = await createBranch(programB.id);
+    const { user: admin } = await createUserFixture({ role: "program_admin", programId: programA.id });
+    const { user: student } = await createUserFixture({ role: "student", branchId: branchA.id });
+
+    const res = await request(app)
+      .patch(`/api/users/${student.id}`)
+      .set("Authorization", authHeader(admin))
+      .send({ role: "branch_admin", branch_id: branchB.id });
+
+    expect(res.status).toBe(403);
+
+    const { rows } = await pool.query("SELECT role, branch_id FROM users WHERE id = $1", [student.id]);
+    expect(rows[0].role).toBe("student");
+    expect(rows[0].branch_id).toBe(branchA.id);
+  });
+
+  it("forbids a branch_admin from moving an in-scope student's branch_id to a different program's branch", async () => {
+    const programA = await createProgram();
+    const programB = await createProgram();
+    const branchA = await createBranch(programA.id);
+    const branchB = await createBranch(programB.id);
+    const { user: admin } = await createUserFixture({ role: "branch_admin", branchId: branchA.id });
+    const { user: student } = await createUserFixture({ role: "student", branchId: branchA.id });
+
+    const res = await request(app)
+      .patch(`/api/users/${student.id}`)
+      .set("Authorization", authHeader(admin))
+      .send({ branch_id: branchB.id });
+
+    expect(res.status).toBe(403);
+
+    const { rows } = await pool.query("SELECT branch_id FROM users WHERE id = $1", [student.id]);
+    expect(rows[0].branch_id).toBe(branchA.id);
   });
 });
 
