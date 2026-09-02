@@ -2,6 +2,7 @@ import { pool } from "../../config/db.js";
 import { ApiError } from "../../lib/apiError.js";
 import { signTokenPair, verifyRefreshToken, type JwtPayload, type TokenPair } from "../../lib/jwt.js";
 import { hashPassword, verifyPassword } from "../../lib/password.js";
+import { isCheckViolation, isForeignKeyViolation, isUniqueViolation } from "../../lib/pgError.js";
 import type { User } from "../../types/index.js";
 
 interface UserRow extends User {
@@ -9,14 +10,6 @@ interface UserRow extends User {
 }
 
 const USER_COLUMNS = `id, email, full_name, role, program_id, branch_id, enrollment_year, created_at, updated_at`;
-
-function isUniqueViolation(err: unknown): boolean {
-  return typeof err === "object" && err !== null && "code" in err && (err as { code: string }).code === "23505";
-}
-
-function isForeignKeyViolation(err: unknown): boolean {
-  return typeof err === "object" && err !== null && "code" in err && (err as { code: string }).code === "23503";
-}
 
 function toPayload(user: User): JwtPayload {
   return { sub: user.id, role: user.role, program_id: user.program_id, branch_id: user.branch_id };
@@ -48,6 +41,9 @@ export async function registerStudent(input: RegisterInput): Promise<{ user: Use
     }
     if (isForeignKeyViolation(err)) {
       throw new ApiError(422, "VALIDATION_ERROR", "branch_id does not reference an existing branch");
+    }
+    if (isCheckViolation(err)) {
+      throw new ApiError(422, "VALIDATION_ERROR", "The submitted data does not meet the required constraints");
     }
     throw err;
   }

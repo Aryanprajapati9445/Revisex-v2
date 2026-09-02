@@ -4,16 +4,13 @@ import type { AuthUser } from "../../middleware/auth.js";
 import type { Note, NoteType, NoteStatus, NoteFile } from "../../types/index.js";
 import { buildNoteFileKey, getPresignedGetUrl, getPresignedPutUrl } from "../../lib/s3.js";
 import { env } from "../../config/env.js";
+import { isCheckViolation, isForeignKeyViolation } from "../../lib/pgError.js";
 
 const NOTE_COLUMNS = `id, subject_id, uploader_id, title, description, note_type, exam_year,
   status, reviewed_by, reviewed_at, rejection_reason, download_count, created_at, updated_at`;
 const NOTE_COLUMNS_ALIASED = NOTE_COLUMNS.split(",")
   .map((c) => `n.${c.trim()}`)
   .join(", ");
-
-function isForeignKeyViolation(err: unknown): boolean {
-  return typeof err === "object" && err !== null && "code" in err && (err as { code: string }).code === "23503";
-}
 
 export interface CreateNoteInput {
   subject_id: string;
@@ -36,6 +33,9 @@ export async function createNote(uploaderId: string, input: CreateNoteInput): Pr
   } catch (err) {
     if (isForeignKeyViolation(err)) {
       throw new ApiError(422, "VALIDATION_ERROR", "subject_id does not reference an existing subject");
+    }
+    if (isCheckViolation(err)) {
+      throw new ApiError(422, "VALIDATION_ERROR", "The submitted data does not meet the required constraints");
     }
     throw err;
   }
@@ -145,11 +145,18 @@ export async function updateNote(id: string, input: UpdateNoteInput): Promise<No
   }
   if (sets.length === 0) return getNoteById(id);
   params.push(id);
-  const { rows } = await pool.query<Note>(
-    `UPDATE notes SET ${sets.join(", ")} WHERE id = $${params.length} RETURNING ${NOTE_COLUMNS}`,
-    params
-  );
-  return rows[0] ?? null;
+  try {
+    const { rows } = await pool.query<Note>(
+      `UPDATE notes SET ${sets.join(", ")} WHERE id = $${params.length} RETURNING ${NOTE_COLUMNS}`,
+      params
+    );
+    return rows[0] ?? null;
+  } catch (err) {
+    if (isCheckViolation(err)) {
+      throw new ApiError(422, "VALIDATION_ERROR", "The submitted data does not meet the required constraints");
+    }
+    throw err;
+  }
 }
 
 export async function deleteNote(id: string): Promise<boolean> {
@@ -194,7 +201,7 @@ export async function getFileById(fileId: string): Promise<NoteFile | null> {
 export async function completeFileUpload(fileId: string, sizeBytes: number): Promise<NoteFile | null> {
   const { rows } = await pool.query<NoteFile>(
     `UPDATE files SET upload_status = 'uploaded', size_bytes = $1, uploaded_at = now()
-     WHERE id = $2 RETURNING ${FILE_COLUMNS}`,
+     WHERE id = $2 AND upload_status = 'pending' RETURNING ${FILE_COLUMNS}`,
     [sizeBytes, fileId]
   );
   return rows[0] ?? null;

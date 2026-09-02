@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { ZodError } from "zod";
 import { env } from "../config/env.js";
 import { ApiError } from "../lib/apiError.js";
+import { isInvalidTextRepresentation } from "../lib/pgError.js";
 
 // Express identifies error-handling middleware by arity (4 params) — _req and
 // _next must stay even though this function doesn't use them.
@@ -19,6 +20,14 @@ export function errorHandler(err: unknown, _req: Request, res: Response, _next: 
         code: "VALIDATION_ERROR",
         message: first ? `${first.path.join(".")}: ${first.message}` : "Validation failed",
       },
+    });
+    return;
+  }
+
+  if (isInvalidTextRepresentation(err)) {
+    res.status(400).json({
+      success: false,
+      error: { code: "VALIDATION_ERROR", message: "One or more identifiers are malformed" },
     });
     return;
   }

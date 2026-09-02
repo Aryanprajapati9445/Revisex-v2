@@ -1,17 +1,10 @@
 import { pool } from "../../config/db.js";
 import { ApiError } from "../../lib/apiError.js";
 import { hashPassword } from "../../lib/password.js";
+import { isCheckViolation, isForeignKeyViolation, isUniqueViolation } from "../../lib/pgError.js";
 import type { User, UserRole } from "../../types/index.js";
 
 const USER_COLUMNS = `id, email, full_name, role, program_id, branch_id, enrollment_year, created_at, updated_at`;
-
-function isUniqueViolation(err: unknown): boolean {
-  return typeof err === "object" && err !== null && "code" in err && (err as { code: string }).code === "23505";
-}
-
-function isForeignKeyViolation(err: unknown): boolean {
-  return typeof err === "object" && err !== null && "code" in err && (err as { code: string }).code === "23503";
-}
 
 export interface ListUsersOptions {
   role?: UserRole;
@@ -105,6 +98,9 @@ export async function createUser(input: CreateUserInput): Promise<User> {
     if (isForeignKeyViolation(err)) {
       throw new ApiError(422, "VALIDATION_ERROR", "program_id or branch_id does not reference an existing row");
     }
+    if (isCheckViolation(err)) {
+      throw new ApiError(422, "VALIDATION_ERROR", "The submitted data does not meet the required constraints");
+    }
     throw err;
   }
 }
@@ -141,6 +137,9 @@ export async function updateUser(id: string, input: UpdateUserInput): Promise<Us
     if (isForeignKeyViolation(err)) {
       throw new ApiError(422, "VALIDATION_ERROR", "program_id or branch_id does not reference an existing row");
     }
+    if (isCheckViolation(err)) {
+      throw new ApiError(422, "VALIDATION_ERROR", "The submitted data does not meet the required constraints");
+    }
     throw err;
   }
 }
@@ -153,4 +152,12 @@ export async function deleteUser(id: string): Promise<boolean> {
 export async function branchBelongsToProgram(branchId: string, programId: string): Promise<boolean> {
   const { rows } = await pool.query(`SELECT 1 FROM branches WHERE id = $1 AND program_id = $2`, [branchId, programId]);
   return rows.length > 0;
+}
+
+/** Returns the branch's program_id, or null if no branch with that id exists. */
+export async function getBranchProgramId(branchId: string): Promise<string | null> {
+  const { rows } = await pool.query<{ program_id: string }>(`SELECT program_id FROM branches WHERE id = $1`, [
+    branchId,
+  ]);
+  return rows[0]?.program_id ?? null;
 }
