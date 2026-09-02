@@ -446,7 +446,8 @@ export async function listActivePrograms(
   const { rows: countRows } = await pool.query<{ count: string }>(
     `SELECT COUNT(*)::text AS count FROM programs WHERE is_active`
   );
-  return { rows, total: Number(countRows[0].count) };
+  // COUNT(*) always returns exactly one row; ?? 0 satisfies noUncheckedIndexedAccess.
+  return { rows, total: Number(countRows[0]?.count ?? 0) };
 }
 
 export async function getProgramById(id: string): Promise<Program | null> {
@@ -1280,7 +1281,9 @@ export async function registerStudent(input: RegisterInput): Promise<{ user: Use
        RETURNING ${USER_COLUMNS}`,
       [input.email, input.full_name, passwordHash, input.branch_id]
     );
-    const user = rows[0];
+    // INSERT ... RETURNING always returns exactly one row on success;
+    // tsconfig's noUncheckedIndexedAccess otherwise types rows[0] as possibly undefined.
+    const user = rows[0]!;
     return { user, tokens: signTokenPair(toPayload(user)) };
   } catch (err) {
     if (isUniqueViolation(err)) {
@@ -1725,7 +1728,8 @@ export async function listUsers(
     `SELECT COUNT(*)::text AS count FROM users u ${where}`,
     params
   );
-  return { rows, total: Number(countRows[0].count) };
+  // COUNT(*) always returns exactly one row; ?? 0 satisfies noUncheckedIndexedAccess.
+  return { rows, total: Number(countRows[0]?.count ?? 0) };
 }
 
 export async function getUserById(id: string): Promise<User | null> {
@@ -1738,7 +1742,8 @@ export async function updateOwnProfile(id: string, fullName: string): Promise<Us
     `UPDATE users SET full_name = $1 WHERE id = $2 RETURNING ${USER_COLUMNS}`,
     [fullName, id]
   );
-  return rows[0];
+  // UPDATE ... RETURNING on a valid id always returns exactly one row.
+  return rows[0]!;
 }
 
 export interface CreateUserInput {
@@ -1760,7 +1765,8 @@ export async function createUser(input: CreateUserInput): Promise<User> {
        RETURNING ${USER_COLUMNS}`,
       [input.email, input.full_name, passwordHash, input.role, input.program_id, input.branch_id, input.enrollment_year]
     );
-    return rows[0];
+    // INSERT ... RETURNING always returns exactly one row on success.
+    return rows[0]!;
   } catch (err) {
     if (isUniqueViolation(err)) {
       throw new ApiError(409, "EMAIL_TAKEN", "An account with this email already exists");
@@ -2369,7 +2375,8 @@ export async function createNote(uploaderId: string, input: CreateNoteInput): Pr
        RETURNING ${NOTE_COLUMNS}`,
       [input.subject_id, uploaderId, input.title, input.description, input.note_type, input.exam_year]
     );
-    return rows[0];
+    // INSERT ... RETURNING always returns exactly one row on success.
+    return rows[0]!;
   } catch (err) {
     if (isForeignKeyViolation(err)) {
       throw new ApiError(422, "VALIDATION_ERROR", "subject_id does not reference an existing subject");
@@ -2448,7 +2455,8 @@ export async function listNotes(
     `SELECT COUNT(*)::text AS count FROM notes n ${joinClause} ${where}`,
     params
   );
-  return { rows, total: Number(countRows[0].count) };
+  // COUNT(*) always returns exactly one row; ?? 0 satisfies noUncheckedIndexedAccess.
+  return { rows, total: Number(countRows[0]?.count ?? 0) };
 }
 
 export async function getNoteById(id: string): Promise<Note | null> {
@@ -2926,7 +2934,8 @@ export async function createPendingFiles(
        RETURNING ${FILE_COLUMNS}`,
       [noteId, env.AWS_S3_BUCKET, key, f.original_filename, f.mime_type, index]
     );
-    const file = rows[0];
+    // INSERT ... RETURNING always returns exactly one row on success.
+    const file = rows[0]!;
     const putUrl = await getPresignedPutUrl(key, f.mime_type);
     results.push({ file, putUrl });
   }
