@@ -165,9 +165,15 @@ export async function truncateAll(): Promise<void> {
 - [ ] **Step 7: Create `backend/tests/helpers/fixtures.ts`**
 
 ```typescript
+import bcrypt from "bcrypt";
 import { pool } from "../../src/config/db.js";
-import { hashPassword } from "../../src/lib/password.js";
 import type { UserRole } from "../../src/types/index.js";
+
+// Hashes directly via bcrypt rather than importing lib/password.ts (created
+// in Task 3) — this file is created in Task 1, before that module exists,
+// and fixture password hashes don't need to go through the app's configured
+// salt-round setting.
+const FIXTURE_SALT_ROUNDS = 4;
 
 let counter = 0;
 function unique(prefix: string): string {
@@ -221,7 +227,7 @@ export interface CreateUserOptions {
 export async function createUserFixture(options: CreateUserOptions) {
   const email = options.email ?? `${unique("user")}@test.edu`;
   const password = options.password ?? "password123";
-  const passwordHash = await hashPassword(password);
+  const passwordHash = await bcrypt.hash(password, FIXTURE_SALT_ROUNDS);
   const { rows } = await pool.query(
     `INSERT INTO users (email, full_name, password_hash, role, program_id, branch_id)
      VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
