@@ -8,6 +8,7 @@ import { checkDbConnection } from "./config/db.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { notFound } from "./middleware/notFound.js";
 
+import { authRouter } from "./modules/auth/auth.routes.js";
 import { programsRouter } from "./modules/programs/programs.routes.js";
 import { branchesRouter } from "./modules/branches/branches.routes.js";
 import { subjectsRouter } from "./modules/subjects/subjects.routes.js";
@@ -40,6 +41,7 @@ export function createApp() {
     res.status(dbOk ? 200 : 503).json({ status: dbOk ? "ok" : "unreachable" });
   });
 
+  app.use("/api/auth", authRouter);
   app.use("/api/programs", programsRouter);
   app.use("/api/branches", branchesRouter);
   app.use("/api/subjects", subjectsRouter);
