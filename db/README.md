@@ -8,7 +8,9 @@ subjects) is data, not code — nothing about it is hardcoded.
 
 | File | What it is |
 |---|---|
-| `migrations/` | Versioned schema migrations, applied with golang-migrate. See "Migrations" below — this is the sole source of truth for the schema. |
+| `drizzle/schema/` | **Current source of truth for the schema** — a Drizzle ORM TypeScript definition. See "Drizzle" below. |
+| `drizzle/migrations/` | SQL migrations generated from `drizzle/schema/` by `drizzle-kit generate`, plus one hand-written custom migration for what the schema DSL can't express (triggers, one DEFERRABLE constraint). |
+| `migrations/` | The original golang-migrate migration this project launched with. Frozen — see "Migrations (legacy)" below. Not applied to new databases; `drizzle/migrations/` is structurally equivalent and supersedes it. |
 | `seed.sql` | Sample data covering every table. Idempotent (re-running adds nothing). Not a migration — see "Seed data stays separate". |
 | `tests.sql` | 28 constraint assertions. Runs in a transaction and rolls back. |
 | `queries.sql` | The twelve query shapes the API will issue. Rolls back; four of them mutate. |
@@ -57,11 +59,86 @@ make local-queries
 make local-psql
 ```
 
-## Migrations
+## Drizzle
 
-Schema changes are versioned migrations under `migrations/`, applied with
-[golang-migrate](https://github.com/golang-migrate/migrate) — not a
-hand-maintained schema file you re-run against whatever you're pointed at.
+**The schema now lives as TypeScript in `drizzle/schema/`, one file per
+table** (`programs.ts`, `branches.ts`, ..., plus `enums.ts`, `custom-types.ts`
+for `citext`/`tsvector`, and `views.ts` for `v_note_scope`/`v_note_stats`).
+This is the thing you edit — not `drizzle/migrations/`, and not the frozen
+`migrations/000001_initial_schema.up.sql` described below.
+
+```bash
+npm install                          # once, and after pulling schema changes
+npm run build                        # compiles drizzle/schema -> dist/ — backend/
+                                      # imports the compiled output, not the .ts
+                                      # source; re-run this after every schema edit
+npm run db:generate                  # diffs schema against drizzle/migrations/'s
+                                      # history, writes a new SQL migration
+npm run db:migrate                   # applies pending migrations to DATABASE_URL
+npm run db:studio                    # drizzle-kit's local schema browser/editor
+```
+
+**Workflow:** edit a file under `drizzle/schema/` → `npm run db:generate` →
+**read the generated SQL in `drizzle/migrations/` before running anything** →
+`npm run db:migrate` → `npm run build` so `backend/` picks up the new
+inferred types.
+
+### What Drizzle's schema DSL can't express
+
+Three things from the original schema have no representation in Drizzle's
+table-definition API and are hand-maintained in
+`drizzle/migrations/0001_procedural_logic.sql` instead, permanently:
+
+- The `set_updated_at()` trigger function and its 7 `BEFORE UPDATE` triggers.
+- The `subjects_check_semester()` trigger (a CHECK cannot read another
+  table, so the per-program semester ceiling has to be procedural).
+- `files_note_order_key`'s `DEFERRABLE INITIALLY IMMEDIATE` property —
+  drizzle-orm's unique-constraint builder has no `.deferrable()` (checked
+  against `drizzle-orm@0.45.2`).
+
+`drizzle/schema/subjects.ts` and `files.ts` both comment at the exact point
+this applies, pointing here. Drizzle's schema diffing has no model of any of
+these three, so `db:generate` will never try to "fix" or revert them — they
+just live outside its view permanently.
+
+Also hand-added at the top of `drizzle/migrations/0000_*.sql`: the two
+`CREATE EXTENSION` statements (`pgcrypto`, `citext`) that `drizzle-kit`
+doesn't manage, and — at the bottom — the `COMMENT ON` statements from the
+original schema, which the DSL also has no representation for. Both are pure
+documentation/setup, not something `db:generate` will ever diff against.
+
+### Verifying the baseline migration
+
+Before this replaced golang-migrate as the tool of record, the generated
+`drizzle/migrations/0000_*.sql` + `0001_procedural_logic.sql` pair was
+verified against `migrations/000001_initial_schema.up.sql` by applying each
+to a fresh throwaway Postgres container and diffing `pg_dump --schema-only`
+output. They're structurally and behaviorally identical — the only
+differences are constraint/index names (Drizzle's naming convention vs.
+Postgres's own default naming for unnamed constraints), which nothing in the
+application depends on (errors are handled by SQLSTATE code, never by
+constraint name). A live smoke test (insert through every table, confirm the
+generated `search_vector` column, both views, the `updated_at` trigger, and
+the semester-ceiling trigger all behave correctly) passed against the
+generated migrations directly.
+
+**Neon and the local sandbox already have `migrations/000001` applied** via
+golang-migrate — `drizzle/migrations/0000_*.sql` must NOT be run against
+either as a live `CREATE TABLE` migration, since the tables already exist.
+Baselining (recording it as already-applied in Drizzle's own migration
+tracking, without executing it) has not been done yet against either
+database — do that once, deliberately, rather than running `db:migrate`
+against an existing database without checking first.
+
+## Migrations (legacy)
+
+Schema changes were originally versioned migrations under `migrations/`,
+applied with [golang-migrate](https://github.com/golang-migrate/migrate).
+**This is now superseded by Drizzle** (see above) — `migrations/` is kept as
+a historical record and is frozen at `000001`; new schema changes go through
+`drizzle/schema/` + `drizzle-kit generate` instead. The rest of this section
+describes the golang-migrate workflow for reference — not a hand-maintained
+schema file you re-run against whatever you're pointed at.
 
 ### Why this changed
 

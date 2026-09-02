@@ -15,6 +15,15 @@ const { Pool, types } = pg;
 //     string by default, to protect values beyond Number.MAX_SAFE_INTEGER.
 //     A file size in bytes will never get near that, so parse it as a
 //     number to match NoteFile's declared type.
+//
+// These parsers apply to every query on this pool, Drizzle's included —
+// this is the one pool db/index.ts's `drizzle(pool, ...)` wraps too.
+// Drizzle's own decoding for `timestamp({ mode: "string" })` and
+// `bigint({ mode: "number" })` (see db/drizzle/schema/) is a passthrough
+// when the driver already hands it a string/number respectively (checked
+// against drizzle-orm@0.45.2's PgTimestampString/PgBigInt53
+// mapFromDriverValue), so these two layers don't fight — Drizzle just sees
+// values already in its expected shape.
 const toIso = (val: string) => new Date(val).toISOString();
 types.setTypeParser(types.builtins.TIMESTAMPTZ, toIso);
 types.setTypeParser(types.builtins.TIMESTAMP, toIso);

@@ -6,6 +6,10 @@ REST API in Node.js + TypeScript + Express, backed by the schema in
 ## Setup
 
 ```bash
+# Once, and after any schema change in ../db/drizzle/schema/: build db/'s
+# Drizzle schema so this package can import its compiled types.
+(cd ../db && npm install && npm run build)
+
 npm install
 cp .env.example .env
 # edit .env — DATABASE_URL should be Neon's POOLED connection string
@@ -71,11 +75,17 @@ src/
 ├── config/
 │   ├── env.ts          loads and validates .env with zod; exits on bad config
 │   └── db.ts            pg Pool, built from DATABASE_URL
+├── db/
+│   └── index.ts          Drizzle client (`drizzle(pool, { schema })`), schema
+│                         imported from ../../../db/dist/schema/ (compiled
+│                         from ../../db/drizzle/schema/ — the actual source)
 ├── middleware/
 │   ├── errorHandler.ts  catches thrown errors -> JSON response
 │   └── notFound.ts       catch-all for unmatched routes
 ├── types/
-│   └── index.ts          TS types mirroring the enums and tables in db/migrations/
+│   └── index.ts          row types inferred from ../db's Drizzle schema
+│                         ($inferSelect) — never hand-write a type that
+│                         duplicates a table's column shape
 └── modules/
     └── <resource>/
         ├── <resource>.routes.ts       Express Router, mounted in app.ts
@@ -105,8 +115,8 @@ every resource has a home, but no business logic exists for it yet.
 
 Follow the `programs` module:
 
-1. Write `<resource>.service.ts` — parameterized queries against `pool` from
-   `config/db.ts`, typed against `types/index.ts`.
+1. Write `<resource>.service.ts` — queries against `db`/`schema` from
+   `src/db/index.ts` (Drizzle query builder), typed against `types/index.ts`.
 2. Write `<resource>.controller.ts` — parse `req.params`/`req.query`/`req.body`,
    call the service, `next(err)` on failure (`errorHandler` handles the rest).
 3. Replace the stub body in `<resource>.routes.ts` with real routes calling

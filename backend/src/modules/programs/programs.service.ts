@@ -1,26 +1,26 @@
-import { pool } from "../../config/db.js";
+import { asc, count, eq } from "drizzle-orm";
+import { db, schema } from "../../db/index.js";
 import type { Program } from "../../types/index.js";
-
-const SELECT_COLUMNS = `id, code, name, duration_semesters, is_active, created_at, updated_at`;
 
 export async function listActivePrograms(
   limit: number,
   offset: number
 ): Promise<{ rows: Program[]; total: number }> {
-  const { rows } = await pool.query<Program>(
-    `SELECT ${SELECT_COLUMNS} FROM programs WHERE is_active ORDER BY code LIMIT $1 OFFSET $2`,
-    [limit, offset]
-  );
-  const { rows: countRows } = await pool.query<{ count: string }>(
-    `SELECT COUNT(*)::text AS count FROM programs WHERE is_active`
-  );
-  return { rows, total: Number(countRows[0]?.count ?? 0) };
+  const [rows, countRows] = await Promise.all([
+    db
+      .select()
+      .from(schema.programs)
+      .where(eq(schema.programs.is_active, true))
+      .orderBy(asc(schema.programs.code))
+      .limit(limit)
+      .offset(offset),
+    db.select({ total: count() }).from(schema.programs).where(eq(schema.programs.is_active, true)),
+  ]);
+  // count() always returns exactly one row.
+  return { rows, total: countRows[0]!.total };
 }
 
 export async function getProgramById(id: string): Promise<Program | null> {
-  const { rows } = await pool.query<Program>(
-    `SELECT ${SELECT_COLUMNS} FROM programs WHERE id = $1`,
-    [id]
-  );
-  return rows[0] ?? null;
+  const [row] = await db.select().from(schema.programs).where(eq(schema.programs.id, id)).limit(1);
+  return row ?? null;
 }

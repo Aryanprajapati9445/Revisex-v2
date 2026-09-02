@@ -5,16 +5,17 @@
     "moduleResolution": "NodeNext",
     "lib": ["ES2022"],
     "outDir": "dist",
-    "rootDir": "src",
+    "rootDir": "drizzle",
+    "composite": true,
+    "declaration": true,
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "declaration": false,
     "sourceMap": true
   },
-  "include": ["src/**/*.ts"],
-  "references": [{ "path": "../db" }]
+  "include": ["drizzle/**/*.ts"],
+  "exclude": ["drizzle/migrations/**"]
 }
