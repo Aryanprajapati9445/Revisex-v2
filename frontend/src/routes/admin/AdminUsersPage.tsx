@@ -1,8 +1,24 @@
-import { ShieldCheck, Trash2, UserPlus } from "lucide-react";
+import { AlertCircle, ShieldCheck, Trash2, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { ErrorState } from "@/components/layout/ErrorState";
 import { Pagination } from "@/components/layout/Pagination";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { RequirePermission } from "@/features/admin/RequirePermission";
 import {
   useAdminUsers,
@@ -67,25 +83,36 @@ function CreateAdminUserForm({ onClose, filters }: { onClose: () => void; filter
     });
   }
 
-  const inputClass = "rounded-control bg-surface px-2.5 py-1.5 text-ui outline-none";
+  // Native <select>, not the shadcn Select: kept consistent with the
+  // identical picker in UserForm.tsx, and plain enough not to need one.
+  const selectClass = "rounded-control bg-surface px-2.5 py-1.5 text-ui outline-none";
 
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 p-4">
-      <div role="dialog" aria-modal="true" aria-label="Add user" className="w-full max-w-md rounded-panel bg-background p-6 shadow-floating">
-        <h2 className="text-base font-medium">Add user</h2>
-        <div className="mt-4 flex flex-col gap-4">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-caption text-text-muted">Full name</span>
-            <input required value={fullName} onChange={(e) => setFullName(e.target.value)} className={inputClass} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-caption text-text-muted">Email</span>
-            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-caption text-text-muted">Password</span>
-            <input type="password" required minLength={8} value={password} onChange={(e) => setPassword(e.target.value)} className={inputClass} />
-          </label>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add user</DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="admin-user-full-name">Full name</Label>
+            <Input id="admin-user-full-name" required value={fullName} onChange={(e) => setFullName(e.target.value)} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="admin-user-email">Email</Label>
+            <Input id="admin-user-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="admin-user-password">Password</Label>
+            <Input
+              id="admin-user-password"
+              type="password"
+              required
+              minLength={8}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </div>
           <label className="flex flex-col gap-1.5">
             <span className="text-caption text-text-muted">Domain role</span>
             <select
@@ -95,7 +122,7 @@ function CreateAdminUserForm({ onClose, filters }: { onClose: () => void; filter
                 setProgramId("");
                 setBranchId("");
               }}
-              className={inputClass}
+              className={selectClass}
             >
               {DOMAIN_ROLE_OPTIONS.map((option) => (
                 <option key={option} value={option}>
@@ -108,7 +135,7 @@ function CreateAdminUserForm({ onClose, filters }: { onClose: () => void; filter
           {scope === "program" && (
             <label className="flex flex-col gap-1.5">
               <span className="text-caption text-text-muted">Program</span>
-              <select required value={programId} onChange={(e) => setProgramId(e.target.value)} className={inputClass}>
+              <select required value={programId} onChange={(e) => setProgramId(e.target.value)} className={selectClass}>
                 <option value="">Select a program</option>
                 {programs.data?.items.map((program) => (
                   <option key={program.id} value={program.id}>
@@ -130,7 +157,7 @@ function CreateAdminUserForm({ onClose, filters }: { onClose: () => void; filter
                     setProgramId(e.target.value);
                     setBranchId("");
                   }}
-                  className={inputClass}
+                  className={selectClass}
                 >
                   <option value="">Select a program</option>
                   {programs.data?.items.map((program) => (
@@ -142,7 +169,7 @@ function CreateAdminUserForm({ onClose, filters }: { onClose: () => void; filter
               </label>
               <label className="flex flex-col gap-1.5">
                 <span className="text-caption text-text-muted">Branch</span>
-                <select required value={branchId} onChange={(e) => setBranchId(e.target.value)} disabled={programId === ""} className={inputClass}>
+                <select required value={branchId} onChange={(e) => setBranchId(e.target.value)} disabled={programId === ""} className={selectClass}>
                   <option value="">{programId ? "Select a branch" : "Pick a program first"}</option>
                   {branches.data?.items.map((branch) => (
                     <option key={branch.id} value={branch.id}>
@@ -156,26 +183,22 @@ function CreateAdminUserForm({ onClose, filters }: { onClose: () => void; filter
         </div>
 
         {error && (
-          <p role="alert" className="mt-3 text-caption text-status-rejected-fg">
-            {error}
-          </p>
+          <Alert variant="destructive" role="alert">
+            <AlertCircle />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
 
-        <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-control px-2.5 py-1.5 text-ui text-text-muted hover:bg-surface">
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={onClose}>
             Cancel
-          </button>
-          <button
-            type="button"
-            disabled={createUser.isPending || !scopeIsChosen}
-            onClick={handleSubmit}
-            className="rounded-full bg-accent px-4 py-2 text-ui font-medium text-white transition-colors duration-150 disabled:opacity-60"
-          >
+          </Button>
+          <Button type="button" disabled={createUser.isPending || !scopeIsChosen} onClick={handleSubmit}>
             {createUser.isPending ? "Creating…" : "Create"}
-          </button>
+          </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -198,18 +221,20 @@ function ManageRolesForm({ user, onClose }: { user: User; onClose: () => void })
   }
 
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 p-4">
-      <div role="dialog" aria-modal="true" aria-label={`Manage admin roles for ${user.full_name}`} className="w-full max-w-md rounded-panel bg-background p-6 shadow-floating">
-        <h2 className="text-base font-medium">Admin roles — {user.full_name}</h2>
-        <p className="mt-1 text-caption text-text-tertiary">Separate from their domain role ({user.role}).</p>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Admin roles — {user.full_name}</DialogTitle>
+        </DialogHeader>
+        <p className="-mt-2 text-caption text-text-tertiary">Separate from their domain role ({user.role}).</p>
 
         {currentRoles.isPending || allRoles.isPending ? (
-          <div className="mt-4 text-text-muted">Loading…</div>
+          <div className="text-text-muted">Loading…</div>
         ) : (
-          <div className="mt-4 flex flex-col gap-2">
+          <div className="flex flex-col gap-2">
             {allRoles.data?.map((role) => (
               <label key={role.id} className="flex items-center gap-2 rounded-control px-2 py-1.5 hover:bg-surface">
-                <input type="checkbox" checked={effectiveSelected.has(role.id)} onChange={() => toggle(role.id)} />
+                <Checkbox checked={effectiveSelected.has(role.id)} onCheckedChange={() => toggle(role.id)} />
                 <span className="text-ui">{role.name}</span>
               </label>
             ))}
@@ -217,16 +242,17 @@ function ManageRolesForm({ user, onClose }: { user: User; onClose: () => void })
         )}
 
         {error && (
-          <p role="alert" className="mt-3 text-caption text-status-rejected-fg">
-            {error}
-          </p>
+          <Alert variant="destructive" role="alert">
+            <AlertCircle />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
 
-        <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-control px-2.5 py-1.5 text-ui text-text-muted hover:bg-surface">
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={onClose}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             disabled={setUserRoles.isPending}
             onClick={() =>
@@ -235,13 +261,12 @@ function ManageRolesForm({ user, onClose }: { user: User; onClose: () => void })
                 onError: (err: unknown) => setError(err instanceof ApiError ? err.message : "Could not save roles."),
               })
             }
-            className="rounded-full bg-accent px-4 py-2 text-ui font-medium text-white transition-colors duration-150 disabled:opacity-60"
           >
             {setUserRoles.isPending ? "Saving…" : "Save roles"}
-          </button>
+          </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -271,14 +296,10 @@ function AdminUsersList() {
           <p className="mt-1 text-lead text-text-muted">Every account on the platform.</p>
         </div>
         {canCreate && (
-          <button
-            type="button"
-            onClick={() => setAdding(true)}
-            className="flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-ui font-medium text-white transition-colors duration-150 hover:bg-accent/90"
-          >
+          <Button type="button" onClick={() => setAdding(true)}>
             <UserPlus className="size-4" strokeWidth={2} aria-hidden="true" />
             Add user
-          </button>
+          </Button>
         )}
       </div>
 
@@ -292,9 +313,9 @@ function AdminUsersList() {
                 key={user.id}
                 className="flex items-center gap-4 rounded-card bg-background p-4 shadow-raised transition-all duration-200 hover:-translate-y-0.5 hover:shadow-floating"
               >
-                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-subtle text-caption font-semibold text-accent">
-                  {initials(user.full_name)}
-                </span>
+                <Avatar>
+                  <AvatarFallback>{initials(user.full_name)}</AvatarFallback>
+                </Avatar>
                 <div className="flex min-w-0 flex-col">
                   <span className="truncate text-ui font-medium">{user.full_name}</span>
                   <span className="truncate text-caption text-text-tertiary">{user.email}</span>
@@ -303,24 +324,16 @@ function AdminUsersList() {
                   {DOMAIN_ROLE_LABELS[user.role]}
                 </span>
                 {canManageRoles && (
-                  <button
-                    type="button"
-                    onClick={() => setManagingRolesFor(user)}
-                    className="flex items-center gap-1.5 rounded-control px-2.5 py-1.5 text-ui text-text-muted transition-colors duration-150 hover:bg-surface"
-                  >
+                  <Button type="button" variant="ghost" size="sm" onClick={() => setManagingRolesFor(user)}>
                     <ShieldCheck className="size-3.5" strokeWidth={2} aria-hidden="true" />
                     Admin roles
-                  </button>
+                  </Button>
                 )}
                 {canDelete && (
-                  <button
-                    type="button"
-                    onClick={() => setConfirming(user)}
-                    className="flex items-center gap-1.5 rounded-control px-2.5 py-1.5 text-ui text-text-muted transition-colors duration-150 hover:bg-status-rejected-bg hover:text-status-rejected-fg"
-                  >
+                  <Button type="button" variant="ghost-destructive" size="sm" onClick={() => setConfirming(user)}>
                     <Trash2 className="size-3.5" strokeWidth={2} aria-hidden="true" />
                     Remove
-                  </button>
+                  </Button>
                 )}
               </li>
             ))}
@@ -332,26 +345,25 @@ function AdminUsersList() {
       {adding && <CreateAdminUserForm filters={filters} onClose={() => setAdding(false)} />}
       {managingRolesFor && <ManageRolesForm user={managingRolesFor} onClose={() => setManagingRolesFor(null)} />}
 
-      {confirming && (
-        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 p-4">
-          <div role="dialog" aria-modal="true" aria-label="Confirm removal" className="w-full max-w-sm rounded-panel bg-background p-6 shadow-floating">
-            <h2 className="text-base font-medium">Remove {confirming.full_name}?</h2>
-            <div className="mt-4 flex justify-end gap-2">
-              <button type="button" onClick={() => setConfirming(null)} className="rounded-control px-2.5 py-1.5 text-ui text-text-muted hover:bg-surface">
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={deleteUser.isPending}
-                onClick={() => deleteUser.mutate(confirming.id, { onSettled: () => setConfirming(null) })}
-                className="rounded-full bg-accent px-4 py-2 text-ui font-medium text-white transition-colors duration-150 disabled:opacity-60"
-              >
-                Confirm
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <AlertDialog open={confirming !== null} onOpenChange={(open) => !open && setConfirming(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remove {confirming?.full_name}?</AlertDialogTitle>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={deleteUser.isPending}
+              onClick={() => {
+                if (confirming) deleteUser.mutate(confirming.id, { onSettled: () => setConfirming(null) });
+              }}
+            >
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

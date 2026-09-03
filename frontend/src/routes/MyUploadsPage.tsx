@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { ErrorState } from "@/components/layout/ErrorState";
 import { Pagination } from "@/components/layout/Pagination";
+import { Button } from "@/components/ui/button";
 import { NoteCard } from "@/features/notes/NoteCard";
 import { useNotes } from "@/features/notes/queries";
 import type { NoteStatus } from "@/lib/api-types";
@@ -26,12 +27,9 @@ export function MyUploadsPage() {
     <div className="flex flex-col gap-6">
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-title font-bold">My uploads</h1>
-        <Link
-          to="/upload"
-          className="rounded-full bg-accent px-4 py-2 text-ui font-medium text-white transition-colors duration-150"
-        >
-          Upload
-        </Link>
+        <Button asChild>
+          <Link to="/upload">Upload</Link>
+        </Button>
       </div>
 
       <div role="tablist" aria-label="Upload status" className="flex gap-1">

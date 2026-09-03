@@ -11,9 +11,14 @@
   --color-text-muted: #615d59;
   --color-text-tertiary: rgba(0, 0, 0, 0.54);
 
-  /* Accent — primary button fills and focus rings ONLY */
-  --color-accent: #0075de;
-  --color-accent-subtle: #e6f3fe;
+  /* Brand — primary button fills and focus rings ONLY. Named "primary" (not
+     "accent") on purpose: shadcn's generated components hardcode `bg-accent`
+     for subtle hover/highlight states, so "accent" is reserved below for
+     that lighter role — keeping the brand blue this scarce is the point. */
+  --color-primary: #0075de;
+  --color-primary-foreground: #ffffff;
+  --color-accent: #e6f3fe;
+  --color-accent-foreground: #0075de;
 
   /* Status pills — extrapolated from the product shot in Notion's hero.
      Low saturation, tinted background + darker text of the same hue. */
@@ -54,6 +59,38 @@
   --text-ui--line-height: 20px;
   --text-caption: 12px;
   --text-caption--line-height: 16px;
+
+  /* --- shadcn/ui bridge -----------------------------------------------
+     shadcn's generated components (Button, Dialog, Input, Table, ...)
+     read these specific token names. Rather than let shadcn's generic
+     defaults in, every one is pointed at the Notion-derived value it
+     replaces, so a generated component looks native to this design
+     instead of introducing a second palette. */
+  --color-foreground: var(--color-text-primary);
+  --color-card: var(--color-background);
+  --color-card-foreground: var(--color-text-primary);
+  --color-popover: var(--color-background);
+  --color-popover-foreground: var(--color-text-primary);
+  --color-secondary: var(--color-surface);
+  --color-secondary-foreground: var(--color-text-primary);
+  --color-muted: var(--color-surface);
+  --color-muted-foreground: var(--color-text-muted);
+  --color-destructive: var(--color-status-rejected-fg);
+  --color-destructive-foreground: #ffffff;
+  /* Scarcity means no visible borders in this design (shadows carry
+     separation); components that need SOME edge get one at surface tint,
+     not a stark gray line. */
+  --color-border: var(--color-surface);
+  --color-input: var(--color-surface);
+  --color-ring: var(--color-primary);
+
+  /* radius-sm/md/lg/xl are shadcn's generated-component scale, derived so
+     they land on the existing control/card/panel steps. */
+  --radius: var(--radius-card);
+  --radius-sm: var(--radius-control);
+  --radius-md: var(--radius-control);
+  --radius-lg: var(--radius-card);
+  --radius-xl: var(--radius-panel);
 }
 
 @layer base {
@@ -72,7 +109,7 @@
   /* Notion respects both; the measurement recorded focusVisible and
      reducedMotion as true. */
   :focus-visible {
-    outline: 2px solid var(--color-accent);
+    outline: 2px solid var(--color-primary);
     outline-offset: 2px;
   }
 

@@ -1,5 +1,10 @@
 import { useMutation } from "@tanstack/react-query";
+import { AlertCircle } from "lucide-react";
 import { useState, type FormEvent } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useAuth } from "@/features/auth/useAuth";
 import { ApiError, api } from "@/lib/api-client";
 import type { User } from "@/lib/api-types";
@@ -49,33 +54,30 @@ function SettingsForm({ user }: { user: User }) {
       <h1 className="text-title font-bold">Account</h1>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-caption text-text-muted">Full name</span>
-          <input
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="settings-full-name">Full name</Label>
+          <Input
+            id="settings-full-name"
             required
             value={fullName}
             onChange={(e) => {
               setFullName(e.target.value);
               setSaved(false);
             }}
-            className="rounded-control bg-surface px-2.5 py-1.5 text-ui outline-none"
           />
-        </label>
+        </div>
 
         {error && (
-          <p role="alert" className="text-caption text-status-rejected-fg">
-            {error}
-          </p>
+          <Alert variant="destructive" role="alert">
+            <AlertCircle />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
         {saved && <p className="text-caption text-status-approved-fg">Saved</p>}
 
-        <button
-          type="submit"
-          disabled={save.isPending}
-          className="self-start rounded-full bg-accent px-4 py-2 text-ui font-medium text-white transition-colors duration-150 disabled:opacity-60"
-        >
+        <Button type="submit" disabled={save.isPending} className="self-start">
           {save.isPending ? "Saving…" : "Save"}
-        </button>
+        </Button>
       </form>
 
       <dl className="flex flex-col gap-3 rounded-panel bg-surface p-4">

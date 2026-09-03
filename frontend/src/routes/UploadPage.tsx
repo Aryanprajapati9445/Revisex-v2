@@ -1,7 +1,13 @@
 import { useQueryClient } from "@tanstack/react-query";
+import { AlertCircle } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { ErrorState } from "@/components/layout/ErrorState";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { useAuth } from "@/features/auth/useAuth";
 import { NoteTypeFilter } from "@/features/notes/NoteFilters";
 import { useSubjects } from "@/features/taxonomy/queries";
@@ -73,7 +79,9 @@ export function UploadPage() {
     }
   }
 
-  const inputClass = "rounded-control bg-surface px-2.5 py-1.5 text-ui outline-none";
+  // Native <select>, not the shadcn Select: kept for plain, testable
+  // keyboard/selectOptions interaction — no listbox behavior is needed here.
+  const selectClass = "rounded-control bg-surface px-2.5 py-1.5 text-ui outline-none";
 
   return (
     <div className="flex max-w-xl flex-col gap-6">
@@ -85,36 +93,34 @@ export function UploadPage() {
       </div>
 
       {error instanceof UploadError ? (
-        <div role="alert" className="rounded-card bg-status-rejected-bg px-3 py-2 text-ui text-status-rejected-fg">
-          {error.message} Your note was created — you can add its files again from{" "}
-          <a className="underline" href={`/notes/${error.noteId}`}>
-            the note page
-          </a>
-          .
-        </div>
+        <Alert variant="destructive" role="alert">
+          <AlertCircle />
+          <AlertDescription>
+            {error.message} Your note was created — you can add its files again from{" "}
+            <a className="underline" href={`/notes/${error.noteId}`}>
+              the note page
+            </a>
+            .
+          </AlertDescription>
+        </Alert>
       ) : error instanceof ApiError ? (
         <ErrorState error={error} />
       ) : null}
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-caption text-text-muted">Title</span>
-          <input required value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} />
-        </label>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="upload-title">Title</Label>
+          <Input id="upload-title" required value={title} onChange={(e) => setTitle(e.target.value)} />
+        </div>
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-caption text-text-muted">Description</span>
-          <textarea
-            rows={3}
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            className={inputClass}
-          />
-        </label>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="upload-description">Description</Label>
+          <Textarea id="upload-description" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
+        </div>
 
         <label className="flex flex-col gap-1.5">
           <span className="text-caption text-text-muted">Subject</span>
-          <select required value={subjectId} onChange={(e) => setSubjectId(e.target.value)} className={inputClass}>
+          <select required value={subjectId} onChange={(e) => setSubjectId(e.target.value)} className={selectClass}>
             <option value="">Select a subject</option>
             {subjects.data?.items.map((subject) => (
               <option key={subject.id} value={subject.id}>
@@ -127,22 +133,23 @@ export function UploadPage() {
         <NoteTypeFilter value={noteType} onChange={setNoteType} />
 
         {noteType === "pyq" && (
-          <label className="flex flex-col gap-1.5">
-            <span className="text-caption text-text-muted">Exam year</span>
-            <input
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="upload-exam-year">Exam year</Label>
+            <Input
+              id="upload-exam-year"
               type="number"
               min={1950}
               max={2200}
               value={examYear}
               onChange={(e) => setExamYear(e.target.value)}
-              className={inputClass}
             />
-          </label>
+          </div>
         )}
 
-        <label className="flex flex-col gap-1.5">
-          <span className="text-caption text-text-muted">Files</span>
-          <input
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="upload-files">Files</Label>
+          <Input
+            id="upload-files"
             type="file"
             multiple
             onChange={(e) => {
@@ -152,14 +159,14 @@ export function UploadPage() {
               setFiles(problem ? [] : selected);
               setStates(problem ? [] : selected.map(() => "pending"));
             }}
-            className={inputClass}
           />
           {fileError && (
-            <span role="alert" className="text-caption text-status-rejected-fg">
-              {fileError}
-            </span>
+            <Alert variant="destructive" role="alert">
+              <AlertCircle />
+              <AlertDescription>{fileError}</AlertDescription>
+            </Alert>
           )}
-        </label>
+        </div>
 
         {files.length > 0 && (
           <ul className="flex flex-col gap-1.5">
@@ -172,13 +179,9 @@ export function UploadPage() {
           </ul>
         )}
 
-        <button
-          type="submit"
-          disabled={pending || subjectId === "" || fileError !== null}
-          className="rounded-full bg-accent px-4 py-2 text-ui font-medium text-white transition-colors duration-150 disabled:opacity-60"
-        >
+        <Button type="submit" disabled={pending || subjectId === "" || fileError !== null}>
           {pending ? "Uploading…" : "Upload"}
-        </button>
+        </Button>
       </form>
     </div>
   );

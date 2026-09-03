@@ -1,7 +1,24 @@
-import { Lock, Pencil, Plus, Trash2 } from "lucide-react";
+import { AlertCircle, Lock, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { ErrorState } from "@/components/layout/ErrorState";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { RequirePermission } from "@/features/admin/RequirePermission";
 import {
   usePermissionsCatalog,
@@ -30,18 +47,19 @@ function RoleEditor({ role, onClose }: { role: Role; onClose: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 p-4">
-      <div role="dialog" aria-modal="true" aria-label={`Edit ${role.name}`} className="w-full max-w-md rounded-panel bg-background p-6 shadow-floating">
-        <h2 className="text-base font-medium">{role.name}</h2>
-        {role.description && <p className="mt-1 text-caption text-text-tertiary">{role.description}</p>}
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{role.name}</DialogTitle>
+        </DialogHeader>
+        {role.description && <p className="-mt-2 text-caption text-text-tertiary">{role.description}</p>}
 
-        <div className="mt-4 flex max-h-80 flex-col gap-2 overflow-y-auto">
+        <div className="flex max-h-80 flex-col gap-2 overflow-y-auto">
           {catalog.data?.map((permission) => (
             <label key={permission.id} className="flex items-start gap-2 rounded-control px-2 py-1.5 hover:bg-surface">
-              <input
-                type="checkbox"
+              <Checkbox
                 checked={selected.has(permission.id)}
-                onChange={() => toggle(permission.id)}
+                onCheckedChange={() => toggle(permission.id)}
                 className="mt-0.5"
               />
               <span className="flex flex-col">
@@ -53,16 +71,17 @@ function RoleEditor({ role, onClose }: { role: Role; onClose: () => void }) {
         </div>
 
         {error && (
-          <p role="alert" className="mt-3 text-caption text-status-rejected-fg">
-            {error}
-          </p>
+          <Alert variant="destructive" role="alert">
+            <AlertCircle />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
 
-        <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-control px-2.5 py-1.5 text-ui text-text-muted hover:bg-surface">
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={onClose}>
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
             disabled={setPermissions.isPending}
             onClick={() =>
@@ -74,13 +93,12 @@ function RoleEditor({ role, onClose }: { role: Role; onClose: () => void }) {
                 }
               )
             }
-            className="rounded-full bg-accent px-4 py-2 text-ui font-medium text-white transition-colors duration-150 disabled:opacity-60"
           >
             {setPermissions.isPending ? "Saving…" : "Save permissions"}
-          </button>
+          </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -110,32 +128,25 @@ function CreateRoleForm({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 p-4">
-      <div role="dialog" aria-modal="true" aria-label="Create role" className="w-full max-w-md rounded-panel bg-background p-6 shadow-floating">
-        <h2 className="text-base font-medium">Create role</h2>
-        <div className="mt-4 flex flex-col gap-4">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-caption text-text-muted">Name</span>
-            <input
-              required
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="rounded-control bg-surface px-2.5 py-1.5 text-ui outline-none"
-            />
-          </label>
-          <label className="flex flex-col gap-1.5">
-            <span className="text-caption text-text-muted">Description</span>
-            <input
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              className="rounded-control bg-surface px-2.5 py-1.5 text-ui outline-none"
-            />
-          </label>
+    <Dialog open onOpenChange={(open) => !open && onClose()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Create role</DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="role-name">Name</Label>
+            <Input id="role-name" required value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="role-description">Description</Label>
+            <Input id="role-description" value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
 
           <div className="flex max-h-60 flex-col gap-2 overflow-y-auto">
             {catalog.data?.map((permission) => (
               <label key={permission.id} className="flex items-center gap-2 rounded-control px-2 py-1.5 hover:bg-surface">
-                <input type="checkbox" checked={selected.has(permission.id)} onChange={() => toggle(permission.id)} />
+                <Checkbox checked={selected.has(permission.id)} onCheckedChange={() => toggle(permission.id)} />
                 <span className="text-ui">{permission.id}</span>
               </label>
             ))}
@@ -143,26 +154,22 @@ function CreateRoleForm({ onClose }: { onClose: () => void }) {
         </div>
 
         {error && (
-          <p role="alert" className="mt-3 text-caption text-status-rejected-fg">
-            {error}
-          </p>
+          <Alert variant="destructive" role="alert">
+            <AlertCircle />
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
         )}
 
-        <div className="mt-4 flex justify-end gap-2">
-          <button type="button" onClick={onClose} className="rounded-control px-2.5 py-1.5 text-ui text-text-muted hover:bg-surface">
+        <div className="flex justify-end gap-2">
+          <Button type="button" variant="ghost" onClick={onClose}>
             Cancel
-          </button>
-          <button
-            type="button"
-            disabled={createRole.isPending || name.trim() === ""}
-            onClick={handleSubmit}
-            className="rounded-full bg-accent px-4 py-2 text-ui font-medium text-white transition-colors duration-150 disabled:opacity-60"
-          >
+          </Button>
+          <Button type="button" disabled={createRole.isPending || name.trim() === ""} onClick={handleSubmit}>
             {createRole.isPending ? "Creating…" : "Create"}
-          </button>
+          </Button>
         </div>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -171,6 +178,7 @@ function RolesList() {
   const deleteRole = useDeleteRole();
   const [editing, setEditing] = useState<Role | null>(null);
   const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState<Role | null>(null);
 
   if (roles.error) return <ErrorState error={roles.error} />;
   if (roles.isPending) return <div className="text-text-muted">Loading…</div>;
@@ -182,14 +190,10 @@ function RolesList() {
           <h1 className="text-title font-bold">Roles & Permissions</h1>
           <p className="mt-1 text-lead text-text-muted">What each admin role may do.</p>
         </div>
-        <button
-          type="button"
-          onClick={() => setCreating(true)}
-          className="flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-ui font-medium text-white transition-colors duration-150 hover:bg-accent/90"
-        >
+        <Button type="button" onClick={() => setCreating(true)}>
           <Plus className="size-4" strokeWidth={2} aria-hidden="true" />
           Create role
-        </button>
+        </Button>
       </div>
 
       {roles.data.length === 0 ? (
@@ -205,10 +209,10 @@ function RolesList() {
                 <span className="flex items-center gap-2 text-ui font-medium">
                   {role.name}
                   {role.is_system && (
-                    <span className="flex items-center gap-1 rounded-control bg-surface px-1.5 py-0.5 text-caption text-text-muted">
+                    <Badge variant="secondary">
                       <Lock className="size-3" strokeWidth={2} aria-hidden="true" />
                       system
-                    </span>
+                    </Badge>
                   )}
                 </span>
                 <span className="truncate text-caption text-text-tertiary">
@@ -216,23 +220,15 @@ function RolesList() {
                 </span>
               </div>
               <div className="ml-auto flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setEditing(role)}
-                  className="flex items-center gap-1.5 rounded-control px-2.5 py-1.5 text-ui text-text-muted transition-colors duration-150 hover:bg-surface"
-                >
+                <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(role)}>
                   <Pencil className="size-3.5" strokeWidth={2} aria-hidden="true" />
                   Edit permissions
-                </button>
+                </Button>
                 {!role.is_system && (
-                  <button
-                    type="button"
-                    onClick={() => deleteRole.mutate(role.id)}
-                    className="flex items-center gap-1.5 rounded-control px-2.5 py-1.5 text-ui text-text-muted transition-colors duration-150 hover:bg-status-rejected-bg hover:text-status-rejected-fg"
-                  >
+                  <Button type="button" variant="ghost-destructive" size="sm" onClick={() => setDeleting(role)}>
                     <Trash2 className="size-3.5" strokeWidth={2} aria-hidden="true" />
                     Delete
-                  </button>
+                  </Button>
                 )}
               </div>
             </li>
@@ -242,6 +238,29 @@ function RolesList() {
 
       {editing && <RoleEditor role={editing} onClose={() => setEditing(null)} />}
       {creating && <CreateRoleForm onClose={() => setCreating(false)} />}
+
+      <AlertDialog open={deleting !== null} onOpenChange={(open) => !open && setDeleting(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {deleting?.name}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Any user holding only this role loses the permissions it granted.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={deleteRole.isPending}
+              onClick={() => {
+                if (deleting) deleteRole.mutate(deleting.id, { onSettled: () => setDeleting(null) });
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

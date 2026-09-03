@@ -1,4 +1,10 @@
+import { AlertCircle } from "lucide-react";
 import { useState, type FormEvent } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useAuth } from "@/features/auth/useAuth";
 import { useBranches, usePrograms } from "@/features/taxonomy/queries";
 import type { UserRole } from "@/lib/api-types";
@@ -83,35 +89,39 @@ export function UserForm({
     });
   }
 
-  const inputClass = "rounded-control bg-surface px-2.5 py-1.5 text-ui outline-none";
+  // Native <select>, not the shadcn Select: kept for plain, testable
+  // keyboard/selectOptions interaction — no listbox behavior is needed here.
+  const selectClass = "rounded-control bg-surface px-2.5 py-1.5 text-ui outline-none";
   const scopeIsChosen = scope === "program" ? programId !== "" : actorBranchIsFixed || branchId !== "";
 
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 p-4">
-      <div role="dialog" aria-modal="true" aria-label="Add user" className="w-full max-w-md rounded-panel bg-background p-6 shadow-floating">
-        <h2 className="text-base font-medium">Add user</h2>
-        <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-caption text-text-muted">Full name</span>
-            <input required value={fullName} onChange={(e) => setFullName(e.target.value)} className={inputClass} />
-          </label>
+    <Dialog open onOpenChange={(open) => !open && onCancel()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add user</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="user-full-name">Full name</Label>
+            <Input id="user-full-name" required value={fullName} onChange={(e) => setFullName(e.target.value)} />
+          </div>
 
-          <label className="flex flex-col gap-1.5">
-            <span className="text-caption text-text-muted">Email</span>
-            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
-          </label>
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="user-email">Email</Label>
+            <Input id="user-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
+          </div>
 
-          <label className="flex flex-col gap-1.5">
-            <span className="text-caption text-text-muted">Password</span>
-            <input
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="user-password">Password</Label>
+            <Input
+              id="user-password"
               type="password"
               required
               minLength={8}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className={inputClass}
             />
-          </label>
+          </div>
 
           <label className="flex flex-col gap-1.5">
             <span className="text-caption text-text-muted">Role</span>
@@ -122,7 +132,7 @@ export function UserForm({
                 // The chosen branch may not apply to the new role's scope.
                 if (!actorBranchIsFixed) setBranchId("");
               }}
-              className={inputClass}
+              className={selectClass}
             >
               {allowedRoles.map((option) => (
                 <option key={option} value={option}>
@@ -142,7 +152,7 @@ export function UserForm({
                   setProgramId(e.target.value);
                   setBranchId("");
                 }}
-                className={inputClass}
+                className={selectClass}
               >
                 <option value="">Select a program</option>
                 {programs.data?.items.map((program) => (
@@ -162,7 +172,7 @@ export function UserForm({
                 value={branchId}
                 onChange={(e) => setBranchId(e.target.value)}
                 disabled={programId === ""}
-                className={inputClass}
+                className={selectClass}
               >
                 <option value="">{programId ? "Select a branch" : "Pick a program first"}</option>
                 {branches.data?.items.map((branch) => (
@@ -175,25 +185,22 @@ export function UserForm({
           )}
 
           {error && (
-            <p role="alert" className="text-caption text-status-rejected-fg">
-              {error}
-            </p>
+            <Alert variant="destructive" role="alert">
+              <AlertCircle />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           )}
 
           <div className="flex justify-end gap-2">
-            <button type="button" onClick={onCancel} className="rounded-control px-2.5 py-1.5 text-ui text-text-muted hover:bg-surface">
+            <Button type="button" variant="ghost" onClick={onCancel}>
               Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={pending || !scopeIsChosen}
-              className="rounded-full bg-accent px-4 py-2 text-ui font-medium text-white transition-colors duration-150 disabled:opacity-60"
-            >
+            </Button>
+            <Button type="submit" disabled={pending || !scopeIsChosen}>
               {pending ? "Creating…" : "Create"}
-            </button>
+            </Button>
           </div>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

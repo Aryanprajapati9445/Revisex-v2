@@ -3,6 +3,10 @@ import { useState } from "react";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { ErrorState } from "@/components/layout/ErrorState";
 import { Pagination } from "@/components/layout/Pagination";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { RequirePermission } from "@/features/admin/RequirePermission";
 import { useAuditLog } from "@/features/admin/queries";
 
@@ -10,15 +14,10 @@ function OutcomePill({ outcome }: { outcome: "success" | "failure" }) {
   const isSuccess = outcome === "success";
   const Icon = isSuccess ? CheckCircle2 : XCircle;
   return (
-    <span
-      className={
-        "flex w-fit items-center gap-1 rounded-full px-2.5 py-1 text-caption font-medium " +
-        (isSuccess ? "bg-status-approved-bg text-status-approved-fg" : "bg-status-rejected-bg text-status-rejected-fg")
-      }
-    >
+    <Badge variant={isSuccess ? "approved" : "destructive"}>
       <Icon className="size-3.5" strokeWidth={2} aria-hidden="true" />
       {outcome}
-    </span>
+    </Badge>
   );
 }
 
@@ -38,8 +37,6 @@ function AuditLogTable() {
   };
   const log = useAuditLog(filters);
 
-  const inputClass = "rounded-control bg-surface px-2.5 py-1.5 text-ui outline-none";
-
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -48,54 +45,54 @@ function AuditLogTable() {
       </div>
 
       <div className="flex flex-wrap items-end gap-3 rounded-card bg-surface p-4">
-        <label className="flex flex-col gap-1.5">
-          <span className="text-caption text-text-muted">Actor user id</span>
-          <input
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="audit-actor">Actor user id</Label>
+          <Input
+            id="audit-actor"
             value={actorUserId}
             onChange={(e) => {
               setActorUserId(e.target.value);
               setPage(1);
             }}
             placeholder="uuid"
-            className={inputClass}
           />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-caption text-text-muted">Action</span>
-          <input
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="audit-action">Action</Label>
+          <Input
+            id="audit-action"
             value={action}
             onChange={(e) => {
               setAction(e.target.value);
               setPage(1);
             }}
             placeholder="roles.create"
-            className={inputClass}
           />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-caption text-text-muted">From</span>
-          <input
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="audit-from">From</Label>
+          <Input
+            id="audit-from"
             type="date"
             value={from}
             onChange={(e) => {
               setFrom(e.target.value);
               setPage(1);
             }}
-            className={inputClass}
           />
-        </label>
-        <label className="flex flex-col gap-1.5">
-          <span className="text-caption text-text-muted">To</span>
-          <input
+        </div>
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="audit-to">To</Label>
+          <Input
+            id="audit-to"
             type="date"
             value={to}
             onChange={(e) => {
               setTo(e.target.value);
               setPage(1);
             }}
-            className={inputClass}
           />
-        </label>
+        </div>
       </div>
 
       {log.error ? (
@@ -107,33 +104,33 @@ function AuditLogTable() {
       ) : (
         <>
           <div className="overflow-x-auto rounded-card bg-background shadow-raised">
-            <table className="w-full text-left text-ui">
-              <thead>
-                <tr className="text-caption text-text-muted">
-                  <th className="px-4 py-2.5 font-medium">When</th>
-                  <th className="px-4 py-2.5 font-medium">Actor</th>
-                  <th className="px-4 py-2.5 font-medium">Action</th>
-                  <th className="px-4 py-2.5 font-medium">Resource</th>
-                  <th className="px-4 py-2.5 font-medium">Outcome</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>When</TableHead>
+                  <TableHead>Actor</TableHead>
+                  <TableHead>Action</TableHead>
+                  <TableHead>Resource</TableHead>
+                  <TableHead>Outcome</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {log.data.items.map((entry) => (
-                  <tr key={entry.id} className="border-t border-surface">
-                    <td className="px-4 py-2.5 text-caption text-text-tertiary">{new Date(entry.created_at).toLocaleString()}</td>
-                    <td className="px-4 py-2.5 font-mono text-caption">{entry.actor_user_id ?? "—"}</td>
-                    <td className="px-4 py-2.5">{entry.action}</td>
-                    <td className="px-4 py-2.5 text-text-muted">
+                  <TableRow key={entry.id}>
+                    <TableCell className="text-caption text-text-tertiary">{new Date(entry.created_at).toLocaleString()}</TableCell>
+                    <TableCell className="font-mono text-caption">{entry.actor_user_id ?? "—"}</TableCell>
+                    <TableCell>{entry.action}</TableCell>
+                    <TableCell className="text-text-muted">
                       {entry.resource}
                       {entry.resource_id ? ` #${entry.resource_id.slice(0, 8)}` : ""}
-                    </td>
-                    <td className="px-4 py-2.5">
+                    </TableCell>
+                    <TableCell>
                       <OutcomePill outcome={entry.outcome} />
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
           <Pagination meta={log.data.pagination} onPageChange={setPage} />
         </>

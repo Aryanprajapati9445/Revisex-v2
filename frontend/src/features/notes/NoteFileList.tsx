@@ -1,4 +1,5 @@
 import { FileStatusPill } from "@/components/layout/StatusPill";
+import { Button } from "@/components/ui/button";
 import type { NoteFile } from "@/lib/api-types";
 import { useDownloadFile } from "./queries";
 
@@ -26,14 +27,9 @@ export function NoteFileList({ noteId, files }: { noteId: string; files: NoteFil
           </div>
           <div className="ml-auto flex items-center gap-2">
             <FileStatusPill status={file.upload_status} />
-            <button
-              type="button"
-              onClick={() => download.mutate(file.id)}
-              disabled={download.isPending}
-              className="rounded-full bg-accent px-4 py-1.5 text-ui font-medium text-white transition-colors duration-150 disabled:opacity-60"
-            >
+            <Button type="button" size="sm" onClick={() => download.mutate(file.id)} disabled={download.isPending}>
               {download.isPending ? "Preparing…" : "Download"}
-            </button>
+            </Button>
           </div>
         </li>
       ))}

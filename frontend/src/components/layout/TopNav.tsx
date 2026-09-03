@@ -1,5 +1,13 @@
-import { LogOut, NotebookPen, Upload } from "lucide-react";
-import { Link, NavLink } from "react-router-dom";
+import { LogOut, NotebookPen, Settings, Upload } from "lucide-react";
+import { Link, NavLink, useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useMyPermissions } from "@/features/admin/queries";
 import { RoleGate } from "@/features/auth/RoleGate";
 import { useAuth } from "@/features/auth/useAuth";
@@ -18,12 +26,13 @@ function navClass({ isActive }: { isActive: boolean }) {
 export function TopNav() {
   const { user, status, logout } = useAuth();
   const { data: permissions } = useMyPermissions();
+  const navigate = useNavigate();
 
   return (
     <header className="sticky top-0 z-10 bg-background/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-3">
         <Link to="/" className="flex items-center gap-2 text-ui font-semibold tracking-tight">
-          <span className="flex size-7 items-center justify-center rounded-control bg-accent-subtle text-accent">
+          <span className="flex size-7 items-center justify-center rounded-control bg-accent text-accent-foreground">
             <NotebookPen className="size-4" strokeWidth={2} aria-hidden="true" />
           </span>
           Notes
@@ -61,24 +70,30 @@ export function TopNav() {
         <div className="ml-auto flex items-center gap-2">
           {status === "authenticated" ? (
             <>
-              <Link
-                to="/upload"
-                className="flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-ui font-medium text-white transition-colors duration-150 hover:bg-accent/90"
-              >
-                <Upload className="size-3.5" strokeWidth={2} aria-hidden="true" />
-                Upload
-              </Link>
-              <NavLink to="/settings" className={navClass}>
-                {user?.full_name ?? "Account"}
-              </NavLink>
-              <button
-                type="button"
-                onClick={logout}
-                className="flex items-center gap-1.5 rounded-control px-2.5 py-1.5 text-ui text-text-muted transition-colors duration-150 hover:bg-surface"
-              >
-                <LogOut className="size-3.5" strokeWidth={2} aria-hidden="true" />
-                Sign out
-              </button>
+              <Button asChild size="sm">
+                <Link to="/upload">
+                  <Upload className="size-3.5" strokeWidth={2} aria-hidden="true" />
+                  Upload
+                </Link>
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    {user?.full_name ?? "Account"}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onSelect={() => navigate("/settings")}>
+                    <Settings className="size-3.5" strokeWidth={2} aria-hidden="true" />
+                    Settings
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem variant="destructive" onSelect={logout}>
+                    <LogOut className="size-3.5" strokeWidth={2} aria-hidden="true" />
+                    Sign out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </>
           ) : (
             status === "anonymous" && (
@@ -86,12 +101,9 @@ export function TopNav() {
                 <NavLink to="/login" className={navClass}>
                   Log in
                 </NavLink>
-                <Link
-                  to="/register"
-                  className="rounded-full bg-accent px-4 py-2 text-ui font-medium text-white transition-colors duration-150"
-                >
-                  Sign up
-                </Link>
+                <Button asChild size="sm">
+                  <Link to="/register">Sign up</Link>
+                </Button>
               </>
             )
           )}

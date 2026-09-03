@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { ErrorState } from "@/components/layout/ErrorState";
 import { Pagination } from "@/components/layout/Pagination";
+import { Button } from "@/components/ui/button";
 import { ReviewDialog } from "@/features/moderation/ReviewDialog";
 import { useReviewNote } from "@/features/moderation/queries";
 import { useNotes } from "@/features/notes/queries";
@@ -43,21 +44,22 @@ export function ModerationPage() {
                   {note.description && <p className="truncate text-ui text-text-muted">{note.description}</p>}
                 </div>
                 <div className="ml-auto flex shrink-0 gap-2">
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost-destructive"
+                    size="sm"
                     onClick={() => setRejecting({ id: note.id, title: note.title })}
-                    className="rounded-control bg-surface px-2.5 py-1.5 text-ui transition-colors duration-150 hover:bg-status-rejected-bg"
                   >
                     Reject
-                  </button>
-                  <button
+                  </Button>
+                  <Button
                     type="button"
+                    size="sm"
                     onClick={() => review.mutate({ noteId: note.id, decision: "approved" })}
                     disabled={review.isPending}
-                    className="rounded-full bg-accent px-4 py-1.5 text-ui font-medium text-white transition-colors duration-150 disabled:opacity-60"
                   >
                     Approve
-                  </button>
+                  </Button>
                 </div>
               </li>
             ))}

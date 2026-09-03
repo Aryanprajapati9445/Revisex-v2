@@ -1,4 +1,10 @@
+import { AlertCircle } from "lucide-react";
 import { useState, type FormEvent } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 export function ReviewDialog({
   noteTitle,
@@ -26,43 +32,42 @@ export function ReviewDialog({
   }
 
   return (
-    <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/40 p-4">
-      <div role="dialog" aria-modal="true" aria-label={`Reject ${noteTitle}`} className="w-full max-w-md rounded-panel bg-background p-6 shadow-floating">
-        <h2 className="text-base font-medium">Reject “{noteTitle}”</h2>
-        <form onSubmit={handleSubmit} className="mt-4 flex flex-col gap-4">
-          <label className="flex flex-col gap-1.5">
-            <span className="text-caption text-text-muted">Reason</span>
-            <textarea
+    <Dialog open onOpenChange={(open) => !open && onCancel()}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Reject “{noteTitle}”</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1.5">
+            <Label htmlFor="review-reason">Reason</Label>
+            <Textarea
+              id="review-reason"
               rows={3}
               value={reason}
               onChange={(e) => {
                 setReason(e.target.value);
                 setError(null);
               }}
-              className="rounded-control bg-surface px-2.5 py-1.5 text-ui outline-none"
             />
-          </label>
+          </div>
 
           {error && (
-            <p role="alert" className="text-caption text-status-rejected-fg">
-              {error}
-            </p>
+            <Alert variant="destructive" role="alert">
+              <AlertCircle />
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
           )}
 
-          <div className="flex justify-end gap-2">
-            <button type="button" onClick={onCancel} className="rounded-control px-2.5 py-1.5 text-ui text-text-muted hover:bg-surface">
+          <DialogFooter>
+            <Button type="button" variant="ghost" onClick={onCancel}>
               Cancel
-            </button>
-            <button
-              type="submit"
-              disabled={pending}
-              className="rounded-full bg-accent px-4 py-2 text-ui font-medium text-white transition-colors duration-150 disabled:opacity-60"
-            >
+            </Button>
+            <Button type="submit" disabled={pending}>
               {pending ? "Rejecting…" : "Confirm rejection"}
-            </button>
-          </div>
+            </Button>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

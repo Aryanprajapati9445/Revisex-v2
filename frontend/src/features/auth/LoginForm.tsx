@@ -1,4 +1,9 @@
+import { AlertCircle } from "lucide-react";
 import { useState, type FormEvent } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { ApiError } from "@/lib/api-client";
 import { useAuth } from "./useAuth";
 
@@ -25,41 +30,38 @@ export function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
 
   return (
     <form onSubmit={handleSubmit} className="flex w-full max-w-sm flex-col gap-4">
-      <label className="flex flex-col gap-1.5">
-        <span className="text-caption text-text-muted">Email</span>
-        <input
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="login-email">Email</Label>
+        <Input
+          id="login-email"
           type="email"
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="rounded-control bg-surface px-2.5 py-1.5 text-ui outline-none"
         />
-      </label>
+      </div>
 
-      <label className="flex flex-col gap-1.5">
-        <span className="text-caption text-text-muted">Password</span>
-        <input
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="login-password">Password</Label>
+        <Input
+          id="login-password"
           type="password"
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="rounded-control bg-surface px-2.5 py-1.5 text-ui outline-none"
         />
-      </label>
+      </div>
 
       {error && (
-        <p role="alert" className="text-caption text-status-rejected-fg">
-          {error}
-        </p>
+        <Alert variant="destructive" role="alert">
+          <AlertCircle />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded-full bg-accent px-4 py-2 text-ui font-medium text-white transition-colors duration-150 disabled:opacity-60"
-      >
+      <Button type="submit" disabled={pending}>
         {pending ? "Signing in…" : "Sign in"}
-      </button>
+      </Button>
     </form>
   );
 }

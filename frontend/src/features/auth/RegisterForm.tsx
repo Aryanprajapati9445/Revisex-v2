@@ -1,4 +1,9 @@
+import { AlertCircle } from "lucide-react";
 import { useState, type FormEvent } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useBranches, usePrograms } from "@/features/taxonomy/queries";
 import { ApiError } from "@/lib/api-client";
 import { PICKER_LIMIT } from "@/lib/query-keys";
@@ -43,34 +48,36 @@ export function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
     }
   }
 
-  const inputClass = "rounded-control bg-surface px-2.5 py-1.5 text-ui outline-none";
+  // Native <select>, not the shadcn Select: kept for plain, testable
+  // keyboard/selectOptions interaction — no listbox behavior is needed here.
+  const selectClass = "rounded-control bg-surface px-2.5 py-1.5 text-ui outline-none";
 
   return (
     <form onSubmit={handleSubmit} className="flex w-full max-w-sm flex-col gap-4">
-      <label className="flex flex-col gap-1.5">
-        <span className="text-caption text-text-muted">Full name</span>
-        <input required value={fullName} onChange={(e) => setFullName(e.target.value)} className={inputClass} />
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="register-full-name">Full name</Label>
+        <Input id="register-full-name" required value={fullName} onChange={(e) => setFullName(e.target.value)} />
         {fieldErrors.full_name && <span className="text-caption text-status-rejected-fg">{fieldErrors.full_name}</span>}
-      </label>
+      </div>
 
-      <label className="flex flex-col gap-1.5">
-        <span className="text-caption text-text-muted">Email</span>
-        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="register-email">Email</Label>
+        <Input id="register-email" type="email" required value={email} onChange={(e) => setEmail(e.target.value)} />
         {fieldErrors.email && <span className="text-caption text-status-rejected-fg">{fieldErrors.email}</span>}
-      </label>
+      </div>
 
-      <label className="flex flex-col gap-1.5">
-        <span className="text-caption text-text-muted">Password</span>
-        <input
+      <div className="flex flex-col gap-1.5">
+        <Label htmlFor="register-password">Password</Label>
+        <Input
+          id="register-password"
           type="password"
           required
           minLength={8}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className={inputClass}
         />
         {fieldErrors.password && <span className="text-caption text-status-rejected-fg">{fieldErrors.password}</span>}
-      </label>
+      </div>
 
       <label className="flex flex-col gap-1.5">
         <span className="text-caption text-text-muted">Program</span>
@@ -81,7 +88,7 @@ export function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
             setProgramId(e.target.value);
             setBranchId("");
           }}
-          className={inputClass}
+          className={selectClass}
         >
           <option value="">Select a program</option>
           {programs.data?.items.map((program) => (
@@ -99,7 +106,7 @@ export function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
           value={branchId}
           onChange={(e) => setBranchId(e.target.value)}
           disabled={!programId}
-          className={inputClass}
+          className={selectClass}
         >
           <option value="">{programId ? "Select a branch" : "Pick a program first"}</option>
           {branches.data?.items.map((branch) => (
@@ -112,18 +119,15 @@ export function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
       </label>
 
       {error && (
-        <p role="alert" className="text-caption text-status-rejected-fg">
-          {error}
-        </p>
+        <Alert variant="destructive" role="alert">
+          <AlertCircle />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
       )}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded-full bg-accent px-4 py-2 text-ui font-medium text-white transition-colors duration-150 disabled:opacity-60"
-      >
+      <Button type="submit" disabled={pending}>
         {pending ? "Creating account…" : "Create account"}
-      </button>
+      </Button>
     </form>
   );
 }
