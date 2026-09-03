@@ -5,6 +5,7 @@ import { renderWithProviders } from "@/test/render";
 import { ErrorState } from "./ErrorState";
 import { StatusPill } from "./StatusPill";
 import { PageHeader } from "./PageHeader";
+import { LoadingState } from "./LoadingState";
 
 describe("StatusPill", () => {
   it("labels each note status", () => {
@@ -67,5 +68,18 @@ describe("PageHeader", () => {
 
     expect(screen.getByRole("heading", { name: "Search" })).toBeInTheDocument();
     expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
+  });
+});
+
+describe("LoadingState", () => {
+  it("renders a status region with card skeletons by default", () => {
+    renderWithProviders(<LoadingState />);
+    expect(screen.getByRole("status", { name: /loading/i })).toBeInTheDocument();
+  });
+
+  it("renders a detail skeleton for the detail variant", () => {
+    renderWithProviders(<LoadingState variant="detail" />);
+    const status = screen.getByRole("status", { name: /loading/i });
+    expect(status.querySelectorAll("[data-skeleton-block]").length).toBeGreaterThan(0);
   });
 });
