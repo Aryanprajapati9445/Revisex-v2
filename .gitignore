@@ -4,7 +4,10 @@
 backend/.env.test
 
 # Node
-node_modules/
+# No trailing slash: with one this matches only real directories, and a
+# node_modules symlink (as a git worktree may use to share an install) would
+# slip past it and get committed as a machine-specific absolute path.
+node_modules
 dist/
 npm-debug.log*
 
