@@ -1,6 +1,9 @@
 import { Route, Routes } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
+import { BranchesPage } from "@/routes/BranchesPage";
+import { ProgramsPage } from "@/routes/ProgramsPage";
+import { SubjectsPage } from "@/routes/SubjectsPage";
 
 function Placeholder({ name }: { name: string }) {
   return <div className="text-text-muted">{name} — not built yet</div>;
@@ -10,9 +13,9 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route element={<AppShell />}>
-        <Route index element={<Placeholder name="Programs" />} />
-        <Route path="programs/:programId" element={<Placeholder name="Branches" />} />
-        <Route path="branches/:branchId" element={<Placeholder name="Subjects" />} />
+        <Route index element={<ProgramsPage />} />
+        <Route path="programs/:programId" element={<BranchesPage />} />
+        <Route path="branches/:branchId" element={<SubjectsPage />} />
         <Route path="subjects/:subjectId" element={<Placeholder name="Subject notes" />} />
         <Route path="notes/:noteId" element={<Placeholder name="Note detail" />} />
         <Route path="search" element={<Placeholder name="Search" />} />
