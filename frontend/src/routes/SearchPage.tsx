@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { ErrorState } from "@/components/layout/ErrorState";
@@ -8,12 +8,33 @@ import { NoteTypeFilter } from "@/features/notes/NoteFilters";
 import { useNotes } from "@/features/notes/queries";
 import type { NoteType } from "@/lib/api-types";
 
+/** Long enough to swallow a burst of typing, short enough to feel immediate. */
+const SEARCH_DEBOUNCE_MS = 300;
+
 export function SearchPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [page, setPage] = useState(1);
 
   const q = searchParams.get("q") ?? "";
   const noteType = (searchParams.get("note_type") ?? "") as NoteType | "";
+
+  // The field is driven locally and the URL follows once typing settles. Each
+  // distinct term is a Postgres full-text query, so writing the param on every
+  // keystroke issued one request per character. The query itself still reads
+  // `q` from the URL, so debouncing the write debounces the fetch.
+  const [term, setTerm] = useState(q);
+
+  useEffect(() => {
+    if (term === q) return;
+    const timer = setTimeout(() => {
+      const next = new URLSearchParams(searchParams);
+      if (term) next.set("q", term);
+      else next.delete("q");
+      setSearchParams(next, { replace: true });
+      setPage(1);
+    }, SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [term, q, searchParams, setSearchParams]);
 
   const notes = useNotes({ q: q || undefined, note_type: noteType || undefined, page });
 
@@ -35,8 +56,8 @@ export function SearchPage() {
           <input
             type="search"
             placeholder="Search notes…"
-            defaultValue={q}
-            onChange={(event) => updateParam("q", event.target.value)}
+            value={term}
+            onChange={(event) => setTerm(event.target.value)}
             className="w-full rounded-control bg-surface px-2.5 py-1.5 text-ui outline-none"
           />
         </label>

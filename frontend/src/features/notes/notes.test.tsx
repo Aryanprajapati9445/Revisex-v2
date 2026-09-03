@@ -75,6 +75,30 @@ describe("SearchPage", () => {
     });
   });
 
+  it("issues one query for a typed word, not one per keystroke", async () => {
+    const terms: (string | null)[] = [];
+    server.use(
+      http.get(`${API}/api/notes`, ({ request }) => {
+        terms.push(new URL(request.url).searchParams.get("q"));
+        return HttpResponse.json(paginated([note]));
+      })
+    );
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/search" element={<SearchPage />} />
+      </Routes>,
+      { route: "/search" }
+    );
+
+    await screen.findByRole("heading", { name: /search/i });
+    await userEvent.type(screen.getByRole("searchbox"), "graphs");
+
+    // Settles on the whole word rather than firing g, gr, gra, …
+    await waitFor(() => expect(terms).toContain("graphs"));
+    expect(terms.filter((term) => term !== null)).toEqual(["graphs"]);
+  });
+
   it("shows an empty state when nothing matches", async () => {
     server.use(http.get(`${API}/api/notes`, () => HttpResponse.json(paginated([]))));
 
