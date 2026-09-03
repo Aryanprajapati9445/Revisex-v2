@@ -41,6 +41,37 @@ const file = {
   created_at: "2026-01-01T00:00:00.000Z",
 };
 
+const subject = {
+  id: "s1",
+  branch_id: "b1",
+  code: "CS201",
+  name: "Operating Systems",
+  semester: 4,
+  is_active: true,
+  created_at: "2026-01-01T00:00:00.000Z",
+  updated_at: "2026-01-01T00:00:00.000Z",
+};
+
+const branch = {
+  id: "b1",
+  program_id: "p1",
+  code: "CSE",
+  name: "Computer Science",
+  is_active: true,
+  created_at: "2026-01-01T00:00:00.000Z",
+  updated_at: "2026-01-01T00:00:00.000Z",
+};
+
+const program = {
+  id: "p1",
+  code: "BTECH",
+  name: "B.Tech",
+  duration_semesters: 8,
+  is_active: true,
+  created_at: "2026-01-01T00:00:00.000Z",
+  updated_at: "2026-01-01T00:00:00.000Z",
+};
+
 function paginated<T>(items: T[]) {
   return {
     success: true,
@@ -117,7 +148,10 @@ describe("NoteDetailPage", () => {
   it("renders the note with its files and download count", async () => {
     server.use(
       http.get(`${API}/api/notes/n1`, () => HttpResponse.json({ success: true, data: note })),
-      http.get(`${API}/api/notes/n1/files`, () => HttpResponse.json({ success: true, data: [file] }))
+      http.get(`${API}/api/notes/n1/files`, () => HttpResponse.json({ success: true, data: [file] })),
+      http.get(`${API}/api/subjects/s1`, () => HttpResponse.json({ success: true, data: subject })),
+      http.get(`${API}/api/branches/b1`, () => HttpResponse.json({ success: true, data: branch })),
+      http.get(`${API}/api/programs/p1`, () => HttpResponse.json({ success: true, data: program }))
     );
 
     renderWithProviders(
@@ -132,6 +166,33 @@ describe("NoteDetailPage", () => {
     expect(screen.getByText(/3 downloads/i)).toBeInTheDocument();
   });
 
+  it("shows the resolved subject/branch/program breadcrumb and note type/exam year", async () => {
+    server.use(
+      http.get(`${API}/api/notes/n1`, () => HttpResponse.json({ success: true, data: note })),
+      http.get(`${API}/api/notes/n1/files`, () => HttpResponse.json({ success: true, data: [file] })),
+      http.get(`${API}/api/subjects/s1`, () => HttpResponse.json({ success: true, data: subject })),
+      http.get(`${API}/api/branches/b1`, () => HttpResponse.json({ success: true, data: branch })),
+      http.get(`${API}/api/programs/p1`, () => HttpResponse.json({ success: true, data: program }))
+    );
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/notes/:noteId" element={<NoteDetailPage />} />
+      </Routes>,
+      { route: "/notes/n1" }
+    );
+
+    expect(await screen.findByRole("link", { name: "Operating Systems" })).toHaveAttribute(
+      "href",
+      "/subjects/s1"
+    );
+    expect(await screen.findByRole("link", { name: "Computer Science" })).toHaveAttribute(
+      "href",
+      "/branches/b1"
+    );
+    expect(screen.getByText(/lecture notes/i)).toBeInTheDocument();
+  });
+
   it("opens the presigned URL when a file is downloaded", async () => {
     const open = vi.spyOn(window, "open").mockImplementation(() => null);
     server.use(
@@ -139,7 +200,10 @@ describe("NoteDetailPage", () => {
       http.get(`${API}/api/notes/n1/files`, () => HttpResponse.json({ success: true, data: [file] })),
       http.get(`${API}/api/notes/n1/files/f1/download`, () =>
         HttpResponse.json({ success: true, data: { url: "https://s3.example/signed" } })
-      )
+      ),
+      http.get(`${API}/api/subjects/s1`, () => HttpResponse.json({ success: true, data: subject })),
+      http.get(`${API}/api/branches/b1`, () => HttpResponse.json({ success: true, data: branch })),
+      http.get(`${API}/api/programs/p1`, () => HttpResponse.json({ success: true, data: program }))
     );
 
     renderWithProviders(
