@@ -1,8 +1,7 @@
-import { useQuery } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
-import { ApiError, api } from "@/lib/api-client";
-import type { Branch, Paginated, Program } from "@/lib/api-types";
-import { queryKeys } from "@/lib/query-keys";
+import { useBranches, usePrograms } from "@/features/taxonomy/queries";
+import { ApiError } from "@/lib/api-client";
+import { PICKER_LIMIT } from "@/lib/query-keys";
 import { useAuth } from "./useAuth";
 
 export function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
@@ -16,16 +15,8 @@ export function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [pending, setPending] = useState(false);
 
-  const programs = useQuery({
-    queryKey: queryKeys.programs(),
-    queryFn: () => api.get<Paginated<Program>>("/api/programs", { limit: 100 }),
-  });
-
-  const branches = useQuery({
-    queryKey: queryKeys.branches(programId),
-    queryFn: () => api.get<Paginated<Branch>>("/api/branches", { program_id: programId, limit: 100 }),
-    enabled: programId !== "",
-  });
+  const programs = usePrograms(1, PICKER_LIMIT);
+  const branches = useBranches(programId, 1, PICKER_LIMIT);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();

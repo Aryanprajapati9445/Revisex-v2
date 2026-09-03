@@ -8,7 +8,19 @@ import { useSubjects } from "@/features/taxonomy/queries";
 import { UploadError, uploadNote, type FileUploadState } from "@/features/notes/upload";
 import { ApiError } from "@/lib/api-client";
 import type { NoteType } from "@/lib/api-types";
-import { queryKeys } from "@/lib/query-keys";
+import { PICKER_LIMIT, queryKeys } from "@/lib/query-keys";
+
+// Mirrors the backend's own limits so a doomed upload is refused before a note
+// row is created: requestFiles accepts at most 10 files, and completeFile
+// requires a positive size_bytes — a 0-byte file would otherwise fail only
+// after its S3 PUT had already succeeded.
+const MAX_FILES = 10;
+
+function validateFiles(selected: File[]): string | null {
+  if (selected.length > MAX_FILES) return `You can attach at most ${MAX_FILES} files.`;
+  const empty = selected.find((file) => file.size === 0);
+  return empty ? `“${empty.name}” is empty, so it cannot be uploaded.` : null;
+}
 
 export function UploadPage() {
   const { user } = useAuth();
@@ -23,10 +35,12 @@ export function UploadPage() {
   const [files, setFiles] = useState<File[]>([]);
   const [states, setStates] = useState<FileUploadState[]>([]);
   const [error, setError] = useState<unknown>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
-  // A student's own branch is the only branch they upload into.
-  const subjects = useSubjects(user?.branch_id ?? "", undefined, 1);
+  // A student's own branch is the only branch they upload into. Every subject
+  // must be offered, not just the first page, so this asks for the picker limit.
+  const subjects = useSubjects(user?.branch_id ?? "", undefined, 1, PICKER_LIMIT);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -133,11 +147,18 @@ export function UploadPage() {
             multiple
             onChange={(e) => {
               const selected = Array.from(e.target.files ?? []);
-              setFiles(selected);
-              setStates(selected.map(() => "pending"));
+              const problem = validateFiles(selected);
+              setFileError(problem);
+              setFiles(problem ? [] : selected);
+              setStates(problem ? [] : selected.map(() => "pending"));
             }}
             className={inputClass}
           />
+          {fileError && (
+            <span role="alert" className="text-caption text-status-rejected-fg">
+              {fileError}
+            </span>
+          )}
         </label>
 
         {files.length > 0 && (
@@ -153,7 +174,7 @@ export function UploadPage() {
 
         <button
           type="submit"
-          disabled={pending || subjectId === ""}
+          disabled={pending || subjectId === "" || fileError !== null}
           className="rounded-full bg-accent px-4 py-2 text-ui font-medium text-white transition-colors duration-150 disabled:opacity-60"
         >
           {pending ? "Uploading…" : "Upload"}
