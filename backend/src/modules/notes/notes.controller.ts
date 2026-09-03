@@ -297,3 +297,24 @@ export async function reviewNote(req: Request, res: Response, next: NextFunction
     next(err);
   }
 }
+
+export async function listFiles(req: Request, res: Response, next: NextFunction) {
+  try {
+    const note = await loadNoteOr404(req.params.id);
+
+    // Same visibility rule as getNote: a non-approved note is visible only to
+    // its uploader or an in-scope admin, and a scope miss reads as 404 so it
+    // cannot be distinguished from a note that does not exist.
+    if (note.status !== "approved") {
+      const isOwner = req.user?.id === note.uploader_id;
+      const isPrivileged = !!req.user && isPrivilegedRole(req.user.role);
+      const inScope = isPrivileged && (await isNoteInScope(req.user!, note.id));
+      if (!isOwner && !inScope) throw new ApiError(404, "NOT_FOUND", "Note not found");
+    }
+
+    const files = await notesService.listNoteFiles(note.id);
+    sendSuccess(res, files);
+  } catch (err) {
+    next(err);
+  }
+}

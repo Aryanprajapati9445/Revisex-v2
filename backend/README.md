@@ -40,7 +40,7 @@ Run and checked directly, not just written:
   - `GET /api/programs` (the wired module) → `500` with the real Postgres
     error, via `errorHandler` — a query failure returns clean JSON, it does
     not crash the process.
-  - `GET /api/branches`, `/api/notes` (stubs) → `501` with a per-resource
+  - `GET /api/tags`, `/api/bookmarks` (stubs) → `501` with a per-resource
     message. `GET /nonexistent` → `404`. `GET /health` again afterward →
     still `200` — the process survived every case above.
 - **Happy path**, against `db/`'s local sandbox (`make local-reset`) seeded

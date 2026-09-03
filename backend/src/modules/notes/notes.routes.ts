@@ -15,6 +15,7 @@ notesRouter.post("/", requireAuth, controller.createNote);
 notesRouter.patch("/:id", requireAuth, controller.updateNote);
 notesRouter.delete("/:id", requireAuth, controller.deleteNote);
 
+notesRouter.get("/:id/files", optionalAuth, controller.listFiles);
 notesRouter.get("/:id/files/:fileId/download", optionalAuth, controller.downloadFile);
 notesRouter.post("/:id/files", requireAuth, controller.requestFiles);
 notesRouter.post("/:id/files/:fileId/complete", requireAuth, controller.completeFile);

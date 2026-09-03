@@ -230,3 +230,13 @@ export async function reviewNote(
   );
   return rows[0] ?? null;
 }
+
+export async function listNoteFiles(noteId: string): Promise<NoteFile[]> {
+  const { rows } = await pool.query<NoteFile>(
+    `SELECT ${FILE_COLUMNS} FROM files
+     WHERE note_id = $1 AND upload_status = 'uploaded'
+     ORDER BY sort_order, created_at`,
+    [noteId]
+  );
+  return rows;
+}

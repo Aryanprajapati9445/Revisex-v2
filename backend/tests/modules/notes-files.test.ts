@@ -271,3 +271,78 @@ describe("GET /api/notes/:id/files/:fileId/download", () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe("GET /api/notes/:id/files", () => {
+  it("lists uploaded files for an approved note anonymously", async () => {
+    const { subject, student } = await setup();
+    const note = await createPendingNote(subject.id, student.id);
+
+    const requestRes = await request(app)
+      .post(`/api/notes/${note.id}/files`)
+      .set("Authorization", authHeader(student))
+      .send({ files: [{ original_filename: "one.pdf", mime_type: "application/pdf" }] });
+    const fileId = requestRes.body.data[0].file.id;
+
+    await request(app)
+      .post(`/api/notes/${note.id}/files/${fileId}/complete`)
+      .set("Authorization", authHeader(student))
+      .send({ size_bytes: 100 });
+
+    await pool.query(`UPDATE notes SET status = 'approved', reviewed_at = now() WHERE id = $1`, [note.id]);
+
+    const res = await request(app).get(`/api/notes/${note.id}/files`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0].id).toBe(fileId);
+    expect(res.body.data[0].upload_status).toBe("uploaded");
+  });
+
+  it("omits files that were never completed", async () => {
+    const { subject, student } = await setup();
+    const note = await createPendingNote(subject.id, student.id);
+
+    await request(app)
+      .post(`/api/notes/${note.id}/files`)
+      .set("Authorization", authHeader(student))
+      .send({ files: [{ original_filename: "pending.pdf", mime_type: "application/pdf" }] });
+
+    await pool.query(`UPDATE notes SET status = 'approved', reviewed_at = now() WHERE id = $1`, [note.id]);
+
+    const res = await request(app).get(`/api/notes/${note.id}/files`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual([]);
+  });
+
+  it("hides a pending note's files from an anonymous request", async () => {
+    const { subject, student } = await setup();
+    const note = await createPendingNote(subject.id, student.id);
+
+    const res = await request(app).get(`/api/notes/${note.id}/files`);
+
+    expect(res.status).toBe(404);
+  });
+
+  it("lets the owner list their own pending note's files", async () => {
+    const { subject, student } = await setup();
+    const note = await createPendingNote(subject.id, student.id);
+
+    const res = await request(app)
+      .get(`/api/notes/${note.id}/files`)
+      .set("Authorization", authHeader(student));
+
+    expect(res.status).toBe(200);
+  });
+
+  it("masks an out-of-scope admin with 404", async () => {
+    const { subject, student, otherBranchAdmin } = await setup();
+    const note = await createPendingNote(subject.id, student.id);
+
+    const res = await request(app)
+      .get(`/api/notes/${note.id}/files`)
+      .set("Authorization", authHeader(otherBranchAdmin));
+
+    expect(res.status).toBe(404);
+  });
+});
