@@ -2,7 +2,11 @@ import { Route, Routes } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
 import { BranchesPage } from "@/routes/BranchesPage";
+import { LoginPage } from "@/routes/LoginPage";
+import { MyUploadsPage } from "@/routes/MyUploadsPage";
 import { NoteDetailPage } from "@/routes/NoteDetailPage";
+import { RegisterPage } from "@/routes/RegisterPage";
+import { SettingsPage } from "@/routes/SettingsPage";
 import { ProgramsPage } from "@/routes/ProgramsPage";
 import { SearchPage } from "@/routes/SearchPage";
 import { SubjectNotesPage } from "@/routes/SubjectNotesPage";
@@ -23,13 +27,13 @@ export function AppRoutes() {
         <Route path="subjects/:subjectId" element={<SubjectNotesPage />} />
         <Route path="notes/:noteId" element={<NoteDetailPage />} />
         <Route path="search" element={<SearchPage />} />
-        <Route path="login" element={<Placeholder name="Login" />} />
-        <Route path="register" element={<Placeholder name="Register" />} />
+        <Route path="login" element={<LoginPage />} />
+        <Route path="register" element={<RegisterPage />} />
 
         <Route element={<ProtectedRoute />}>
           <Route path="upload" element={<UploadPage />} />
-          <Route path="my-uploads" element={<Placeholder name="My uploads" />} />
-          <Route path="settings" element={<Placeholder name="Settings" />} />
+          <Route path="my-uploads" element={<MyUploadsPage />} />
+          <Route path="settings" element={<SettingsPage />} />
           <Route path="moderate" element={<Placeholder name="Moderation" />} />
           <Route path="admin/users" element={<Placeholder name="Users" />} />
         </Route>
