@@ -1,8 +1,14 @@
-import { ArrowRight, BadgeCheck, LayoutGrid, ShieldCheck, Sparkles, Upload as UploadIcon } from "lucide-react";
+import { ArrowRight, LayoutGrid, ShieldCheck, Sparkles, Upload as UploadIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { EmptyState } from "@/components/layout/EmptyState";
+import { LoadingState } from "@/components/layout/LoadingState";
 import { useAuth } from "@/features/auth/useAuth";
+import { NoteCard } from "@/features/notes/NoteCard";
+import { useNotes } from "@/features/notes/queries";
+import { TaxonomyCard } from "@/features/taxonomy/TaxonomyCard";
+import { usePrograms } from "@/features/taxonomy/queries";
 
 const FEATURES = [
   {
@@ -22,87 +28,101 @@ const FEATURES = [
   },
 ];
 
-const STEPS = [
-  { n: "1", title: "Pick your subject", body: "Follow program → branch → semester → subject." },
-  { n: "2", title: "Preview & download", body: "Check a note is the right one before you commit." },
-  { n: "3", title: "Upload your own", body: "Share what helped you — it gets reviewed, then published." },
-];
-
 export function HomePage() {
   const { status, user } = useAuth();
   const isAuthenticated = status === "authenticated";
 
+  const programs = usePrograms(1, 3);
+  const recentNotes = useNotes({ status: "approved", limit: 4 });
+
   return (
     <div className="flex flex-col gap-24">
-      <section className="grid grid-cols-1 items-center gap-10 pt-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-16">
-        <div className="animate-rise-in flex flex-col gap-6">
-          <span className="flex items-center gap-1.5 text-caption font-medium text-text-muted">
-            <Sparkles className="size-3.5 text-primary" strokeWidth={2} aria-hidden="true" />
-            College notes, organized
-          </span>
-          <h1 className="text-display font-semibold tracking-tight text-text-primary">
-            Find the notes your syllabus already promised you.
-          </h1>
-          <p className="max-w-lg text-lead text-text-muted">
-            Browse by program, branch, and subject, download what you need, and upload what you
-            have. Every note is reviewed before it's published.
-          </p>
-          <div className="flex flex-wrap items-center gap-3 pt-2">
-            <Button asChild size="lg" className="group">
-              <Link to="/browse">
-                Browse notes
-                <ArrowRight
-                  className="size-4 transition-transform duration-200 group-hover:translate-x-0.5"
-                  strokeWidth={2}
-                  aria-hidden="true"
-                />
-              </Link>
+      <section className="flex flex-col gap-6 pt-8">
+        <span className="flex items-center gap-1.5 text-caption font-medium text-text-muted">
+          <Sparkles className="size-3.5 text-primary" strokeWidth={2} aria-hidden="true" />
+          College notes, organized
+        </span>
+        <h1 className="max-w-2xl text-display font-semibold tracking-tight text-text-primary">
+          Find the notes your syllabus already promised you.
+        </h1>
+        <p className="max-w-lg text-lead text-text-muted">
+          Browse by program, branch, and subject, download what you need, and upload what you
+          have. Every note is reviewed before it's published.
+        </p>
+        <div className="flex flex-wrap items-center gap-3 pt-2">
+          <Button asChild size="lg" className="group">
+            <Link to="/browse">
+              Browse notes
+              <ArrowRight
+                className="size-4 transition-transform duration-200 group-hover:translate-x-0.5"
+                strokeWidth={2}
+                aria-hidden="true"
+              />
+            </Link>
+          </Button>
+          {isAuthenticated ? (
+            <Button asChild variant="secondary" size="lg">
+              <Link to="/upload">Upload a note</Link>
             </Button>
-            {isAuthenticated ? (
-              <Button asChild variant="secondary" size="lg">
-                <Link to="/upload">Upload a note</Link>
-              </Button>
-            ) : (
-              <Button asChild variant="ghost" size="lg">
-                <Link to="/register">Create an account</Link>
-              </Button>
-            )}
-          </div>
-          {isAuthenticated && (
-            <p className="text-caption text-text-tertiary">
-              Welcome back{user?.full_name ? `, ${user.full_name}` : ""}.
-            </p>
+          ) : (
+            <Button asChild variant="ghost" size="lg">
+              <Link to="/register">Create an account</Link>
+            </Button>
           )}
         </div>
-
-        <div className="animate-rise-in relative hidden lg:block" style={{ animationDelay: "0.1s" }} aria-hidden="true">
-          <div className="absolute -top-4 -left-4 w-64 rounded-panel bg-background p-4 shadow-raised transition-transform duration-300 hover:-translate-y-0.5">
-            <span className="flex items-center gap-1.5 text-caption font-medium text-text-muted">
-              <LayoutGrid className="size-3.5" strokeWidth={2} />
-              CSE
-            </span>
-            <p className="mt-1 text-base font-medium">Computer Science</p>
-            <p className="mt-1 text-caption text-text-tertiary">8 semesters</p>
-          </div>
-          <div className="ml-16 mt-20 w-64 rounded-panel bg-background p-4 shadow-floating transition-transform duration-300 hover:-translate-y-0.5">
-            <span className="text-caption font-medium text-text-muted">SEM 4</span>
-            <p className="mt-1 text-base font-medium">Operating Systems</p>
-            <p className="mt-1 text-caption text-text-tertiary">12 notes</p>
-          </div>
-          <div className="ml-6 mt-6 w-64 rounded-card bg-surface p-4">
-            <span className="inline-flex items-center gap-1 rounded-full bg-status-approved-bg px-2.5 py-1 text-caption font-medium text-status-approved-fg">
-              <BadgeCheck className="size-3.5" strokeWidth={2} />
-              Approved
-            </span>
-            <p className="mt-2 text-base font-medium">Deadlock Handling — Unit 4</p>
-          </div>
-        </div>
+        {isAuthenticated && (
+          <p className="text-caption text-text-tertiary">
+            Welcome back{user?.full_name ? `, ${user.full_name}` : ""}.
+          </p>
+        )}
       </section>
 
       <section className="flex flex-col gap-8">
-        <div className="max-w-lg">
-          <h2 className="text-title font-bold text-text-primary">Everything organized the way class actually works</h2>
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <h2 className="text-title font-bold text-text-primary">Start with a program</h2>
+          <Link to="/browse" className="text-ui font-medium text-primary hover:underline">
+            View all programs
+          </Link>
         </div>
+        {programs.isPending ? (
+          <LoadingState count={3} />
+        ) : programs.error ? null : programs.data.items.length === 0 ? (
+          <EmptyState title="No programs yet" hint="An administrator needs to add a program first." />
+        ) : (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {programs.data.items.map((program) => (
+              <TaxonomyCard
+                key={program.id}
+                to={`/programs/${program.id}`}
+                code={program.code}
+                name={program.name}
+                meta={`${program.duration_semesters} semesters`}
+              />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-8">
+        <h2 className="text-title font-bold text-text-primary">Recently approved notes</h2>
+        {recentNotes.isPending ? (
+          <LoadingState count={4} />
+        ) : recentNotes.error ? null : recentNotes.data.items.length === 0 ? (
+          <EmptyState
+            title="No approved notes yet"
+            hint="Be the first to upload notes once you're signed in."
+          />
+        ) : (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {recentNotes.data.items.map((note) => (
+              <NoteCard key={note.id} note={note} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="flex flex-col gap-8">
+        <h2 className="text-title font-bold text-text-primary">Everything organized the way class actually works</h2>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
           {FEATURES.map((feature) => (
             <Card key={feature.title} className="hover:-translate-y-0.5 hover:shadow-floating">
@@ -112,21 +132,6 @@ export function HomePage() {
               <h3 className="text-base font-medium text-text-primary">{feature.title}</h3>
               <p className="text-ui text-text-muted">{feature.body}</p>
             </Card>
-          ))}
-        </div>
-      </section>
-
-      <section className="flex flex-col gap-8">
-        <h2 className="text-title font-bold text-text-primary">How it works</h2>
-        <div className="grid grid-cols-1 gap-8 sm:grid-cols-3">
-          {STEPS.map((step) => (
-            <div key={step.n} className="flex flex-col gap-3">
-              <span className="flex size-8 items-center justify-center rounded-full bg-accent text-ui font-medium text-accent-foreground">
-                {step.n}
-              </span>
-              <h3 className="text-base font-medium text-text-primary">{step.title}</h3>
-              <p className="text-ui text-text-muted">{step.body}</p>
-            </div>
           ))}
         </div>
       </section>
