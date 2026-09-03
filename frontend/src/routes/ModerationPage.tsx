@@ -20,7 +20,7 @@ export function ModerationPage() {
   const review = useReviewNote(queryKeys.notes(filters));
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex max-w-4xl flex-col gap-6">
       <div>
         <h1 className="text-title font-bold">Moderation queue</h1>
         <p className="mt-1 text-lead text-text-muted">Notes awaiting review in your scope.</p>

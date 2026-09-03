@@ -30,7 +30,7 @@ export function TopNav() {
 
   return (
     <header className="sticky top-0 z-10 bg-background/90 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-3">
+      <div className="mx-auto flex max-w-[90rem] items-center gap-6 px-6 py-3 sm:px-8">
         <Link to="/" className="flex items-center gap-2 text-ui font-semibold tracking-tight">
           <span className="flex size-7 items-center justify-center rounded-control bg-accent text-accent-foreground">
             <NotebookPen className="size-4" strokeWidth={2} aria-hidden="true" />

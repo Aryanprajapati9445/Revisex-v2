@@ -186,7 +186,7 @@ function RolesList() {
   if (roles.isPending) return <div className="text-text-muted">Loading…</div>;
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex max-w-4xl flex-col gap-6">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-title font-bold">Roles & Permissions</h1>

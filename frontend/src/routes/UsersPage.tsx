@@ -37,7 +37,7 @@ export function UsersPage() {
   const deleteUser = useDeleteUser(filters);
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex max-w-4xl flex-col gap-6">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-title font-bold">Users</h1>
