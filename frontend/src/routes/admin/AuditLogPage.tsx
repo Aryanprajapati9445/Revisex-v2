@@ -1,3 +1,4 @@
+import { CheckCircle2, XCircle } from "lucide-react";
 import { useState } from "react";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { ErrorState } from "@/components/layout/ErrorState";
@@ -7,13 +8,15 @@ import { useAuditLog } from "@/features/admin/queries";
 
 function OutcomePill({ outcome }: { outcome: "success" | "failure" }) {
   const isSuccess = outcome === "success";
+  const Icon = isSuccess ? CheckCircle2 : XCircle;
   return (
     <span
       className={
-        "rounded-full px-2.5 py-1 text-caption font-medium " +
+        "flex w-fit items-center gap-1 rounded-full px-2.5 py-1 text-caption font-medium " +
         (isSuccess ? "bg-status-approved-bg text-status-approved-fg" : "bg-status-rejected-bg text-status-rejected-fg")
       }
     >
+      <Icon className="size-3.5" strokeWidth={2} aria-hidden="true" />
       {outcome}
     </span>
   );

@@ -1,3 +1,4 @@
+import { ShieldCheck, Trash2, UserPlus } from "lucide-react";
 import { useState } from "react";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { ErrorState } from "@/components/layout/ErrorState";
@@ -25,6 +26,11 @@ const DOMAIN_ROLE_LABELS: Record<UserRole, string> = {
   branch_admin: "Branch admin",
   student: "Student",
 };
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  return ((parts[0]?.[0] ?? "") + (parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? "") : "")).toUpperCase();
+}
 
 function scopeFor(role: UserRole): "none" | "program" | "branch" {
   if (role === "superuser") return "none";
@@ -268,8 +274,9 @@ function AdminUsersList() {
           <button
             type="button"
             onClick={() => setAdding(true)}
-            className="rounded-full bg-accent px-4 py-2 text-ui font-medium text-white transition-colors duration-150"
+            className="flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-ui font-medium text-white transition-colors duration-150 hover:bg-accent/90"
           >
+            <UserPlus className="size-4" strokeWidth={2} aria-hidden="true" />
             Add user
           </button>
         )}
@@ -281,7 +288,13 @@ function AdminUsersList() {
         <>
           <ul className="flex flex-col gap-2">
             {users.data.items.map((user) => (
-              <li key={user.id} className="flex items-center gap-4 rounded-card bg-background p-4 shadow-raised">
+              <li
+                key={user.id}
+                className="flex items-center gap-4 rounded-card bg-background p-4 shadow-raised transition-all duration-200 hover:-translate-y-0.5 hover:shadow-floating"
+              >
+                <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-accent-subtle text-caption font-semibold text-accent">
+                  {initials(user.full_name)}
+                </span>
                 <div className="flex min-w-0 flex-col">
                   <span className="truncate text-ui font-medium">{user.full_name}</span>
                   <span className="truncate text-caption text-text-tertiary">{user.email}</span>
@@ -293,8 +306,9 @@ function AdminUsersList() {
                   <button
                     type="button"
                     onClick={() => setManagingRolesFor(user)}
-                    className="rounded-control px-2.5 py-1.5 text-ui text-text-muted transition-colors duration-150 hover:bg-surface"
+                    className="flex items-center gap-1.5 rounded-control px-2.5 py-1.5 text-ui text-text-muted transition-colors duration-150 hover:bg-surface"
                   >
+                    <ShieldCheck className="size-3.5" strokeWidth={2} aria-hidden="true" />
                     Admin roles
                   </button>
                 )}
@@ -302,8 +316,9 @@ function AdminUsersList() {
                   <button
                     type="button"
                     onClick={() => setConfirming(user)}
-                    className="rounded-control px-2.5 py-1.5 text-ui text-text-muted transition-colors duration-150 hover:bg-status-rejected-bg hover:text-status-rejected-fg"
+                    className="flex items-center gap-1.5 rounded-control px-2.5 py-1.5 text-ui text-text-muted transition-colors duration-150 hover:bg-status-rejected-bg hover:text-status-rejected-fg"
                   >
+                    <Trash2 className="size-3.5" strokeWidth={2} aria-hidden="true" />
                     Remove
                   </button>
                 )}

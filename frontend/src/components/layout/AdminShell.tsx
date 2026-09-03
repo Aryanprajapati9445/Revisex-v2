@@ -1,16 +1,17 @@
+import { ScrollText, ShieldCheck, Users } from "lucide-react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useMyPermissions } from "@/features/admin/queries";
 import { cn } from "@/lib/utils";
 
 const SECTIONS = [
-  { to: "/admin/accounts", label: "Users", permission: "users.read" },
-  { to: "/admin/roles", label: "Roles & Permissions", permission: "roles.manage" },
-  { to: "/admin/audit-log", label: "Audit Log", permission: "audit.read" },
+  { to: "/admin/accounts", label: "Users", permission: "users.read", icon: Users },
+  { to: "/admin/roles", label: "Roles & Permissions", permission: "roles.manage", icon: ShieldCheck },
+  { to: "/admin/audit-log", label: "Audit Log", permission: "audit.read", icon: ScrollText },
 ] as const;
 
 function navClass({ isActive }: { isActive: boolean }) {
   return cn(
-    "rounded-control px-2.5 py-1.5 text-ui transition-colors duration-150",
+    "flex items-center gap-2 rounded-control px-2.5 py-1.5 text-ui transition-colors duration-150",
     isActive ? "bg-surface text-text-primary" : "text-text-muted hover:bg-surface"
   );
 }
@@ -24,6 +25,7 @@ export function AdminShell() {
       <nav className="flex shrink-0 flex-row gap-1 sm:w-48 sm:flex-col">
         {visibleSections.map((section) => (
           <NavLink key={section.to} to={section.to} className={navClass}>
+            <section.icon className="size-4" strokeWidth={2} aria-hidden="true" />
             {section.label}
           </NavLink>
         ))}

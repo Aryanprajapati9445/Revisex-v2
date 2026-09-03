@@ -1,3 +1,4 @@
+import { Lock, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { ErrorState } from "@/components/layout/ErrorState";
@@ -184,8 +185,9 @@ function RolesList() {
         <button
           type="button"
           onClick={() => setCreating(true)}
-          className="rounded-full bg-accent px-4 py-2 text-ui font-medium text-white transition-colors duration-150"
+          className="flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-ui font-medium text-white transition-colors duration-150 hover:bg-accent/90"
         >
+          <Plus className="size-4" strokeWidth={2} aria-hidden="true" />
           Create role
         </button>
       </div>
@@ -195,12 +197,18 @@ function RolesList() {
       ) : (
         <ul className="flex flex-col gap-2">
           {roles.data.map((role) => (
-            <li key={role.id} className="flex flex-col gap-2 rounded-card bg-background p-4 shadow-raised sm:flex-row sm:items-center">
+            <li
+              key={role.id}
+              className="flex flex-col gap-2 rounded-card bg-background p-4 shadow-raised transition-all duration-200 hover:-translate-y-0.5 hover:shadow-floating sm:flex-row sm:items-center"
+            >
               <div className="flex min-w-0 flex-col">
                 <span className="flex items-center gap-2 text-ui font-medium">
                   {role.name}
                   {role.is_system && (
-                    <span className="rounded-control bg-surface px-1.5 py-0.5 text-caption text-text-muted">system</span>
+                    <span className="flex items-center gap-1 rounded-control bg-surface px-1.5 py-0.5 text-caption text-text-muted">
+                      <Lock className="size-3" strokeWidth={2} aria-hidden="true" />
+                      system
+                    </span>
                   )}
                 </span>
                 <span className="truncate text-caption text-text-tertiary">
@@ -211,16 +219,18 @@ function RolesList() {
                 <button
                   type="button"
                   onClick={() => setEditing(role)}
-                  className="rounded-control px-2.5 py-1.5 text-ui text-text-muted transition-colors duration-150 hover:bg-surface"
+                  className="flex items-center gap-1.5 rounded-control px-2.5 py-1.5 text-ui text-text-muted transition-colors duration-150 hover:bg-surface"
                 >
+                  <Pencil className="size-3.5" strokeWidth={2} aria-hidden="true" />
                   Edit permissions
                 </button>
                 {!role.is_system && (
                   <button
                     type="button"
                     onClick={() => deleteRole.mutate(role.id)}
-                    className="rounded-control px-2.5 py-1.5 text-ui text-text-muted transition-colors duration-150 hover:bg-status-rejected-bg hover:text-status-rejected-fg"
+                    className="flex items-center gap-1.5 rounded-control px-2.5 py-1.5 text-ui text-text-muted transition-colors duration-150 hover:bg-status-rejected-bg hover:text-status-rejected-fg"
                   >
+                    <Trash2 className="size-3.5" strokeWidth={2} aria-hidden="true" />
                     Delete
                   </button>
                 )}

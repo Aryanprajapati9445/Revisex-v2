@@ -1,3 +1,4 @@
+import { LogOut, NotebookPen, Upload } from "lucide-react";
 import { Link, NavLink } from "react-router-dom";
 import { useMyPermissions } from "@/features/admin/queries";
 import { RoleGate } from "@/features/auth/RoleGate";
@@ -21,7 +22,10 @@ export function TopNav() {
   return (
     <header className="sticky top-0 z-10 bg-background/90 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center gap-6 px-6 py-3">
-        <Link to="/" className="text-ui font-semibold tracking-tight">
+        <Link to="/" className="flex items-center gap-2 text-ui font-semibold tracking-tight">
+          <span className="flex size-7 items-center justify-center rounded-control bg-accent-subtle text-accent">
+            <NotebookPen className="size-4" strokeWidth={2} aria-hidden="true" />
+          </span>
           Notes
         </Link>
 
@@ -59,14 +63,20 @@ export function TopNav() {
             <>
               <Link
                 to="/upload"
-                className="rounded-full bg-accent px-4 py-2 text-ui font-medium text-white transition-colors duration-150"
+                className="flex items-center gap-1.5 rounded-full bg-accent px-4 py-2 text-ui font-medium text-white transition-colors duration-150 hover:bg-accent/90"
               >
+                <Upload className="size-3.5" strokeWidth={2} aria-hidden="true" />
                 Upload
               </Link>
               <NavLink to="/settings" className={navClass}>
                 {user?.full_name ?? "Account"}
               </NavLink>
-              <button type="button" onClick={logout} className="rounded-control px-2.5 py-1.5 text-ui text-text-muted hover:bg-surface">
+              <button
+                type="button"
+                onClick={logout}
+                className="flex items-center gap-1.5 rounded-control px-2.5 py-1.5 text-ui text-text-muted transition-colors duration-150 hover:bg-surface"
+              >
+                <LogOut className="size-3.5" strokeWidth={2} aria-hidden="true" />
                 Sign out
               </button>
             </>
