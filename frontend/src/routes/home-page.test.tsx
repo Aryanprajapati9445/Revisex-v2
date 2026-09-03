@@ -69,4 +69,30 @@ describe("HomePage", () => {
     expect(await screen.findByText("B.Tech")).toBeInTheDocument();
     expect(await screen.findByText(/no approved notes yet/i)).toBeInTheDocument();
   });
+
+  it("shows the error state instead of silently hiding the programs section when the request fails", async () => {
+    server.use(
+      http.get(`${API}/api/programs`, () =>
+        HttpResponse.json({ success: false, error: { code: "INTERNAL_ERROR", message: "boom" } }, { status: 500 })
+      ),
+      http.get(`${API}/api/notes`, () => HttpResponse.json(paginated([note])))
+    );
+
+    renderWithProviders(<HomePage />);
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+  });
+
+  it("shows the error state instead of silently hiding the recent notes section when the request fails", async () => {
+    server.use(
+      http.get(`${API}/api/programs`, () => HttpResponse.json(paginated([program]))),
+      http.get(`${API}/api/notes`, () =>
+        HttpResponse.json({ success: false, error: { code: "INTERNAL_ERROR", message: "boom" } }, { status: 500 })
+      )
+    );
+
+    renderWithProviders(<HomePage />);
+
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+  });
 });

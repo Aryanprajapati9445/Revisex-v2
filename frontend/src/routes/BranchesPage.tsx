@@ -22,7 +22,7 @@ export function BranchesPage() {
   return (
     <div className="flex flex-col gap-6">
       <PageHeader
-        breadcrumbs={<Breadcrumbs items={[{ label: "Programs", to: "/" }, { label: program.data.name }]} />}
+        breadcrumbs={<Breadcrumbs items={[{ label: "Programs", to: "/browse" }, { label: program.data.name }]} />}
         title={program.data.name}
       />
 

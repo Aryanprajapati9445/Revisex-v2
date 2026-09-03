@@ -1,15 +1,7 @@
 import { Link } from "react-router-dom";
 import { StatusPill } from "@/components/layout/StatusPill";
+import { TYPE_LABELS } from "@/features/notes/note-labels";
 import type { Note } from "@/lib/api-types";
-
-const TYPE_LABELS: Record<Note["note_type"], string> = {
-  lecture_notes: "Lecture notes",
-  pyq: "Past paper",
-  lab_manual: "Lab manual",
-  assignment: "Assignment",
-  book: "Book",
-  other: "Other",
-};
 
 export function NoteCard({ note, showStatus = false }: { note: Note; showStatus?: boolean }) {
   return (

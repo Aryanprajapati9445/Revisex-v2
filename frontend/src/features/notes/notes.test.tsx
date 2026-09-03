@@ -190,6 +190,11 @@ describe("NoteDetailPage", () => {
       "href",
       "/branches/b1"
     );
+    expect(screen.getByRole("link", { name: "Programs" })).toHaveAttribute("href", "/browse");
+    expect(await screen.findByRole("link", { name: "B.Tech" })).toHaveAttribute(
+      "href",
+      "/programs/p1"
+    );
     expect(screen.getByText(/lecture notes/i)).toBeInTheDocument();
   });
 

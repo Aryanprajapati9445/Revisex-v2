@@ -17,6 +17,8 @@ export function SubjectNotesPage() {
   const [page, setPage] = useState(1);
   const [noteType, setNoteType] = useState<NoteType | "">("");
 
+  // Resolved from the subject id alone, so a deep link or a shared URL still
+  // names where it is in the hierarchy. Each step feeds the next.
   const subject = useSubject(subjectId);
   const branch = useBranch(subject.data?.branch_id ?? "");
   const program = useProgram(branch.data?.program_id ?? "");
@@ -31,7 +33,7 @@ export function SubjectNotesPage() {
         breadcrumbs={
           <Breadcrumbs
             items={[
-              { label: "Programs", to: "/" },
+              { label: "Programs", to: "/browse" },
               ...(program.data ? [{ label: program.data.name, to: `/programs/${program.data.id}` }] : []),
               ...(branch.data ? [{ label: branch.data.name, to: `/branches/${branch.data.id}` }] : []),
               { label: subject.data?.name ?? "Notes" },

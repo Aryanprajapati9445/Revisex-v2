@@ -18,6 +18,8 @@ export function SubjectsPage() {
   const semesterParam = searchParams.get("semester");
   const semester = semesterParam ? Number(semesterParam) : 1;
 
+  // Resolved from the branch id alone: a deep link or shared URL names the
+  // branch and sizes the semester tabs correctly, with no query param to carry.
   const branchQuery = useBranch(branchId);
   const branch = branchQuery.data;
   const program = useProgram(branch?.program_id ?? "");
@@ -27,6 +29,8 @@ export function SubjectsPage() {
   if (branchQuery.error) return <ErrorState error={branchQuery.error} />;
   if (subjects.error) return <ErrorState error={subjects.error} />;
 
+  // Falls back to 8 only until the program loads; the real count comes from the
+  // program's duration_semesters, which the DB trigger also enforces.
   const semesterCount = program.data?.duration_semesters ?? 8;
 
   return (
@@ -35,7 +39,7 @@ export function SubjectsPage() {
         breadcrumbs={
           <Breadcrumbs
             items={[
-              { label: "Programs", to: "/" },
+              { label: "Programs", to: "/browse" },
               ...(program.data ? [{ label: program.data.name, to: `/programs/${program.data.id}` }] : []),
               { label: branch?.name ?? "Subjects" },
             ]}

@@ -11,6 +11,7 @@ import { NoteTypeFilter } from "@/features/notes/NoteFilters";
 import { useNotes } from "@/features/notes/queries";
 import type { NoteType } from "@/lib/api-types";
 
+/** Long enough to swallow a burst of typing, short enough to feel immediate. */
 const SEARCH_DEBOUNCE_MS = 300;
 
 export function SearchPage() {
@@ -20,6 +21,10 @@ export function SearchPage() {
   const q = searchParams.get("q") ?? "";
   const noteType = (searchParams.get("note_type") ?? "") as NoteType | "";
 
+  // The field is driven locally and the URL follows once typing settles. Each
+  // distinct term is a Postgres full-text query, so writing the param on every
+  // keystroke issued one request per character. The query itself still reads
+  // `q` from the URL, so debouncing the write debounces the fetch.
   const [term, setTerm] = useState(q);
 
   useEffect(() => {

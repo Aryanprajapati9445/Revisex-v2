@@ -23,7 +23,10 @@ export function NoteFileList({ noteId, files }: { noteId: string; files: NoteFil
         <li key={file.id} className="flex items-center gap-3 rounded-card bg-surface px-3 py-2.5">
           <div className="flex min-w-0 flex-col">
             <span className="truncate text-ui font-medium">{file.original_filename}</span>
-            <span className="text-caption text-text-tertiary">{formatSize(file.size_bytes)}</span>
+            <span className="text-caption text-text-tertiary">
+              {formatSize(file.size_bytes)} · {file.mime_type}
+              {file.page_count !== null && <> · {file.page_count} pages</>}
+            </span>
           </div>
           <div className="ml-auto flex items-center gap-2">
             <FileStatusPill status={file.upload_status} />

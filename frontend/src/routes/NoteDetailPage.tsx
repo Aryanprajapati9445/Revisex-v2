@@ -5,18 +5,9 @@ import { LoadingState } from "@/components/layout/LoadingState";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { StatusPill } from "@/components/layout/StatusPill";
 import { NoteFileList } from "@/features/notes/NoteFileList";
+import { TYPE_LABELS } from "@/features/notes/note-labels";
 import { useNote, useNoteFiles } from "@/features/notes/queries";
 import { useBranch, useProgram, useSubject } from "@/features/taxonomy/queries";
-import type { Note } from "@/lib/api-types";
-
-const TYPE_LABELS: Record<Note["note_type"], string> = {
-  lecture_notes: "Lecture notes",
-  pyq: "Past paper",
-  lab_manual: "Lab manual",
-  assignment: "Assignment",
-  book: "Book",
-  other: "Other",
-};
 
 export function NoteDetailPage() {
   const { noteId = "" } = useParams();
@@ -36,7 +27,7 @@ export function NoteDetailPage() {
         breadcrumbs={
           <Breadcrumbs
             items={[
-              { label: "Programs", to: "/" },
+              { label: "Programs", to: "/browse" },
               ...(program.data ? [{ label: program.data.name, to: `/programs/${program.data.id}` }] : []),
               ...(branch.data ? [{ label: branch.data.name, to: `/branches/${branch.data.id}` }] : []),
               ...(subject.data ? [{ label: subject.data.name, to: `/subjects/${subject.data.id}` }] : []),
@@ -52,6 +43,7 @@ export function NoteDetailPage() {
         <span>{TYPE_LABELS[note.data.note_type]}</span>
         {note.data.exam_year && <span>· {note.data.exam_year}</span>}
         <span>· {note.data.download_count} downloads</span>
+        <span>· Created {new Date(note.data.created_at).toLocaleDateString()}</span>
         <span>· Updated {new Date(note.data.updated_at).toLocaleDateString()}</span>
       </div>
 

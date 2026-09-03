@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/layout/EmptyState";
+import { ErrorState } from "@/components/layout/ErrorState";
 import { LoadingState } from "@/components/layout/LoadingState";
 import { useAuth } from "@/features/auth/useAuth";
 import { NoteCard } from "@/features/notes/NoteCard";
@@ -86,7 +87,9 @@ export function HomePage() {
         </div>
         {programs.isPending ? (
           <LoadingState count={3} />
-        ) : programs.error ? null : programs.data.items.length === 0 ? (
+        ) : programs.error ? (
+          <ErrorState error={programs.error} />
+        ) : programs.data.items.length === 0 ? (
           <EmptyState title="No programs yet" hint="An administrator needs to add a program first." />
         ) : (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -107,7 +110,9 @@ export function HomePage() {
         <h2 className="text-title font-bold text-text-primary">Recently approved notes</h2>
         {recentNotes.isPending ? (
           <LoadingState count={4} />
-        ) : recentNotes.error ? null : recentNotes.data.items.length === 0 ? (
+        ) : recentNotes.error ? (
+          <ErrorState error={recentNotes.error} />
+        ) : recentNotes.data.items.length === 0 ? (
           <EmptyState
             title="No approved notes yet"
             hint="Be the first to upload notes once you're signed in."
