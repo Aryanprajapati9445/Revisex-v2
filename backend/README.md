@@ -93,12 +93,27 @@ src/
         └── <resource>.service.ts      the actual pg queries
 ```
 
-`modules/programs/` is the one resource fully wired end to end
-(`GET /api/programs`, `GET /api/programs/:id`) — read it as the pattern to
-copy. Every other module (`branches`, `subjects`, `users`, `notes`, `files`,
-`tags`, `bookmarks`, `ratings`, `comments`) is currently a single
+`modules/programs/` is the smallest resource wired end to end
+(`GET /api/programs`, `GET /api/programs/:id`) — read it as the pattern to copy.
+
+Wired modules and their routes:
+
+| Module | Routes |
+|---|---|
+| `auth` | `POST /register`, `/login`, `/refresh`, `/logout`; `GET /me` |
+| `programs` | `GET /`, `GET /:id` |
+| `branches` | `GET /?program_id=`, `GET /:id` |
+| `subjects` | `GET /?branch_id=&semester=`, `GET /:id` |
+| `users` | `GET /me`, `PATCH /me`; `GET /`, `POST /`, `PATCH /:id`, `DELETE /:id` (admin) |
+| `notes` | `GET /`, `GET /:id`, `POST /`, `PATCH /:id`, `DELETE /:id`, `POST /:id/review`, and the two-phase file upload under `/:id/files` |
+
+The taxonomy reads are public and return only `is_active` rows, in both their
+list and detail forms — deactivation is a soft delete, so neither may resolve a
+removed row.
+
+`files`, `tags`, `bookmarks`, `ratings`, and `comments` are still a single
 `<resource>.routes.ts` stub returning `501`, so the URL space is reserved and
-every resource has a home, but no business logic exists for it yet.
+every resource has a home, but no business logic exists for them yet.
 
 ## Known limitations
 
@@ -108,8 +123,10 @@ every resource has a home, but no business logic exists for it yet.
 - **No stale-upload sweeper yet** — `files.upload_status = 'pending'` rows
   from abandoned uploads are not automatically cleaned up. The index
   (`idx_files_stale_uploads`) is in place for when this is added.
-- Business logic for `tags`, `bookmarks`, `ratings`, `comments`, and full CRUD
-  on `branches`/`subjects` is still out of scope — those remain `501` stubs.
+- Business logic for `files`, `tags`, `bookmarks`, `ratings`, and `comments` is
+  still out of scope — those remain `501` stubs. Taxonomy resources are
+  read-only over HTTP: `programs`, `branches`, and `subjects` are administered
+  directly in the database, so there is no create/update/delete route for them.
 
 ## Extending a stub module
 

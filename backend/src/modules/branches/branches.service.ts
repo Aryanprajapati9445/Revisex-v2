@@ -17,7 +17,13 @@ export async function listActiveBranches(
   return { rows, total: countRows[0]!.total };
 }
 
+// Soft-removed branches (is_active = false) stay hidden here too, so the
+// detail route cannot resolve what the list route deliberately omits.
 export async function getBranchById(id: string): Promise<Branch | null> {
-  const [row] = await db.select().from(schema.branches).where(eq(schema.branches.id, id)).limit(1);
+  const [row] = await db
+    .select()
+    .from(schema.branches)
+    .where(and(eq(schema.branches.id, id), eq(schema.branches.is_active, true)))
+    .limit(1);
   return row ?? null;
 }

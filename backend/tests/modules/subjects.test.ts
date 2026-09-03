@@ -81,4 +81,17 @@ describe("GET /api/subjects/:id", () => {
     expect(res.status).toBe(404);
     expect(res.body.error.code).toBe("NOT_FOUND");
   });
+
+  it("hides a soft-removed subject, matching what the list omits", async () => {
+    const program = await createProgram();
+    const branch = await createBranch(program.id);
+    const subject = await createSubject(branch.id);
+    await pool.query(`UPDATE subjects SET is_active = FALSE WHERE id = $1`, [subject.id]);
+
+    const res = await request(app).get(`/api/subjects/${subject.id}`);
+    expect(res.status).toBe(404);
+
+    const list = await request(app).get(`/api/subjects?branch_id=${branch.id}`);
+    expect(list.body.data.items).toEqual([]);
+  });
 });

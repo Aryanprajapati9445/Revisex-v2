@@ -67,6 +67,19 @@ describe("GET /api/programs/:id", () => {
   });
 });
 
+describe("soft removal", () => {
+  it("hides a deactivated program from both the list and its detail route", async () => {
+    const program = await createProgram();
+    await pool.query(`UPDATE programs SET is_active = FALSE WHERE id = $1`, [program.id]);
+
+    const detail = await request(app).get(`/api/programs/${program.id}`);
+    expect(detail.status).toBe(404);
+
+    const list = await request(app).get("/api/programs");
+    expect(list.body.data.items).toEqual([]);
+  });
+});
+
 describe("unmatched route", () => {
   it("returns the standard error envelope", async () => {
     const res = await request(app).get("/api/does-not-exist");

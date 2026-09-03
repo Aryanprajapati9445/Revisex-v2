@@ -45,7 +45,17 @@ controller → service, paginated, parameterized, standard envelope):
 |---|---|---|
 | `GET /api/branches?program_id=&page=&limit=` | public | active branches in a program, `ORDER BY code` |
 | `GET /api/subjects?branch_id=&semester=&page=&limit=` | public | active subjects, `ORDER BY semester, code` |
+| `GET /api/branches/:id` | public | one active branch, or `404` |
+| `GET /api/subjects/:id` | public | one active subject, or `404` |
 | `GET /api/notes/:id/files` | `optionalAuth` | a note's `uploaded` files, honoring the same visibility rule as `GET /api/notes/:id` |
+
+The two detail routes were added during implementation. The `/subjects/:id` and
+`/branches/:id` screens receive only an id from the URL, and both list endpoints
+are scoped (by `program_id` and `branch_id` respectively), so without them a
+deep link or shared URL could not name what it was showing. They mirror
+`GET /api/programs/:id`: `400` on a malformed uuid, `404` when absent. Like every
+taxonomy read they return only `is_active` rows — deactivation is a soft delete,
+so a detail route must not resolve what browse deliberately hides.
 
 `GET /api/notes/:id/files` matters independently: today a `fileId` is only ever
 returned in the response to `POST /api/notes/:id/files`, so a client that

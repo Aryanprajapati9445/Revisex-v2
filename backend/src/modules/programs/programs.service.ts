@@ -1,4 +1,4 @@
-import { asc, count, eq } from "drizzle-orm";
+import { and, asc, count, eq } from "drizzle-orm";
 import { db, schema } from "../../db/index.js";
 import type { Program } from "../../types/index.js";
 
@@ -20,7 +20,14 @@ export async function listActivePrograms(
   return { rows, total: countRows[0]!.total };
 }
 
+// is_active = false is a soft delete ("Remove means is_active = false so
+// historical notes survive"). A deactivated row is hidden from browse, so
+// resolving it by id would let a direct URL walk straight back into it.
 export async function getProgramById(id: string): Promise<Program | null> {
-  const [row] = await db.select().from(schema.programs).where(eq(schema.programs.id, id)).limit(1);
+  const [row] = await db
+    .select()
+    .from(schema.programs)
+    .where(and(eq(schema.programs.id, id), eq(schema.programs.is_active, true)))
+    .limit(1);
   return row ?? null;
 }

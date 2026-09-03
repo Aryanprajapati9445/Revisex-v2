@@ -32,7 +32,13 @@ export async function listActiveSubjects(
   return { rows, total: countRows[0]!.total };
 }
 
+// Soft-removed subjects (is_active = false) stay hidden here too, so the
+// detail route cannot resolve what the list route deliberately omits.
 export async function getSubjectById(id: string): Promise<Subject | null> {
-  const [row] = await db.select().from(schema.subjects).where(eq(schema.subjects.id, id)).limit(1);
+  const [row] = await db
+    .select()
+    .from(schema.subjects)
+    .where(and(eq(schema.subjects.id, id), eq(schema.subjects.is_active, true)))
+    .limit(1);
   return row ?? null;
 }
