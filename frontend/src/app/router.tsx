@@ -3,6 +3,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
 import { BranchesPage } from "@/routes/BranchesPage";
 import { LoginPage } from "@/routes/LoginPage";
+import { ModerationPage } from "@/routes/ModerationPage";
 import { MyUploadsPage } from "@/routes/MyUploadsPage";
 import { NoteDetailPage } from "@/routes/NoteDetailPage";
 import { RegisterPage } from "@/routes/RegisterPage";
@@ -34,7 +35,7 @@ export function AppRoutes() {
           <Route path="upload" element={<UploadPage />} />
           <Route path="my-uploads" element={<MyUploadsPage />} />
           <Route path="settings" element={<SettingsPage />} />
-          <Route path="moderate" element={<Placeholder name="Moderation" />} />
+          <Route path="moderate" element={<ModerationPage />} />
           <Route path="admin/users" element={<Placeholder name="Users" />} />
         </Route>
 
