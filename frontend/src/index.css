@@ -1,0 +1,87 @@
+@import "@fontsource-variable/inter";
+@import "tailwindcss";
+
+@theme {
+  /* Surfaces — warm neutrals, per the "Warm Paper, Cool Action" principle */
+  --color-background: #ffffff;
+  --color-surface: #f9f9f8;
+
+  /* Text — black at alpha, plus one warm gray */
+  --color-text-primary: rgba(0, 0, 0, 0.898);
+  --color-text-muted: #615d59;
+  --color-text-tertiary: rgba(0, 0, 0, 0.54);
+
+  /* Accent — primary button fills and focus rings ONLY */
+  --color-accent: #0075de;
+  --color-accent-subtle: #e6f3fe;
+
+  /* Status pills — extrapolated from the product shot in Notion's hero.
+     Low saturation, tinted background + darker text of the same hue. */
+  --color-status-pending-bg: #fef3d7;
+  --color-status-pending-fg: #8a6100;
+  --color-status-approved-bg: #dcf3e4;
+  --color-status-approved-fg: #1a6b38;
+  --color-status-rejected-bg: #fbe4e2;
+  --color-status-rejected-fg: #8a2c22;
+
+  /* Radius — nesting rule: 12 outer -> 8 default -> 4 inner */
+  --radius-panel: 12px;
+  --radius-card: 8px;
+  --radius-control: 4px;
+
+  /* Depth — the two measured 4-layer stacks. There are no borders anywhere,
+     so these carry all separation. */
+  --shadow-raised: 0 0.175px 1.041px rgba(0, 0, 0, 0.01), 0 0.8px 2.925px rgba(0, 0, 0, 0.02),
+    0 2.025px 7.847px rgba(0, 0, 0, 0.027), 0 4px 12px rgba(0, 0, 0, 0.04);
+  --shadow-floating: 0 0.667px 3.502px rgba(0, 0, 0, 0.008), 0 2.933px 7.252px rgba(0, 0, 0, 0.016),
+    0 7.2px 14.462px rgba(0, 0, 0, 0.02), 0 14px 26px rgba(0, 0, 0, 0.024);
+
+  --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
+
+  /* Display band — negative tracking scaled to size */
+  --text-display: 54px;
+  --text-display--line-height: 56px;
+  --text-display--letter-spacing: -1.875px;
+  --text-title: 42px;
+  --text-title--line-height: 46px;
+  --text-title--letter-spacing: -1.2px;
+
+  /* UI band — 14px/500 is the default */
+  --text-lead: 20px;
+  --text-lead--line-height: 28px;
+  --text-base: 16px;
+  --text-ui: 14px;
+  --text-ui--line-height: 20px;
+  --text-caption: 12px;
+  --text-caption--line-height: 16px;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    background-color: var(--color-background);
+    color: var(--color-text-primary);
+  }
+
+  body {
+    margin: 0;
+    font-size: var(--text-ui);
+    font-weight: 500;
+  }
+
+  /* Notion respects both; the measurement recorded focusVisible and
+     reducedMotion as true. */
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
