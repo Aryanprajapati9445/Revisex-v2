@@ -7,6 +7,7 @@ import { ProgramsPage } from "@/routes/ProgramsPage";
 import { SearchPage } from "@/routes/SearchPage";
 import { SubjectNotesPage } from "@/routes/SubjectNotesPage";
 import { SubjectsPage } from "@/routes/SubjectsPage";
+import { UploadPage } from "@/routes/UploadPage";
 
 function Placeholder({ name }: { name: string }) {
   return <div className="text-text-muted">{name} — not built yet</div>;
@@ -26,7 +27,7 @@ export function AppRoutes() {
         <Route path="register" element={<Placeholder name="Register" />} />
 
         <Route element={<ProtectedRoute />}>
-          <Route path="upload" element={<Placeholder name="Upload" />} />
+          <Route path="upload" element={<UploadPage />} />
           <Route path="my-uploads" element={<Placeholder name="My uploads" />} />
           <Route path="settings" element={<Placeholder name="Settings" />} />
           <Route path="moderate" element={<Placeholder name="Moderation" />} />
