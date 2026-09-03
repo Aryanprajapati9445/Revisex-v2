@@ -2,6 +2,7 @@ import { Route, Routes } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
 import { BranchesPage } from "@/routes/BranchesPage";
+import { HomePage } from "@/routes/HomePage";
 import { LoginPage } from "@/routes/LoginPage";
 import { ModerationPage } from "@/routes/ModerationPage";
 import { MyUploadsPage } from "@/routes/MyUploadsPage";
@@ -20,7 +21,8 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route element={<AppShell />}>
-        <Route index element={<ProgramsPage />} />
+        <Route index element={<HomePage />} />
+        <Route path="browse" element={<ProgramsPage />} />
         <Route path="programs/:programId" element={<BranchesPage />} />
         <Route path="branches/:branchId" element={<SubjectsPage />} />
         <Route path="subjects/:subjectId" element={<SubjectNotesPage />} />

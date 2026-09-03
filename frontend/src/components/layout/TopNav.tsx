@@ -24,7 +24,7 @@ export function TopNav() {
         </Link>
 
         <nav className="flex items-center gap-1">
-          <NavLink to="/" end className={navClass}>
+          <NavLink to="/browse" className={navClass}>
             Browse
           </NavLink>
           <NavLink to="/search" className={navClass}>

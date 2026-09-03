@@ -11,7 +11,7 @@ export function NotFoundPage() {
   return (
     <div className="flex flex-col items-center gap-4">
       <ErrorState error={new ApiError(404, "NOT_FOUND", "Page not found")} />
-      <Link to="/" className="text-ui underline">
+      <Link to="/browse" className="text-ui underline">
         Back to browse
       </Link>
     </div>
