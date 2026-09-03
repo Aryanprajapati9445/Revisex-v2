@@ -4,6 +4,7 @@ import { ApiError } from "@/lib/api-client";
 import { renderWithProviders } from "@/test/render";
 import { ErrorState } from "./ErrorState";
 import { StatusPill } from "./StatusPill";
+import { PageHeader } from "./PageHeader";
 
 describe("StatusPill", () => {
   it("labels each note status", () => {
@@ -41,5 +42,30 @@ describe("ErrorState", () => {
     renderWithProviders(<ErrorState error={new ApiError(403, "FORBIDDEN", "You may not edit this note")} />);
 
     expect(screen.getByRole("alert")).toHaveTextContent(/you may not edit this note/i);
+  });
+});
+
+describe("PageHeader", () => {
+  it("renders title, description, breadcrumbs, and an action", () => {
+    renderWithProviders(
+      <PageHeader
+        breadcrumbs={<nav aria-label="Breadcrumb">Programs</nav>}
+        title="Computer Science"
+        description="CSE · 8 semesters"
+        action={<button type="button">Do thing</button>}
+      />
+    );
+
+    expect(screen.getByRole("heading", { name: "Computer Science" })).toBeInTheDocument();
+    expect(screen.getByText("CSE · 8 semesters")).toBeInTheDocument();
+    expect(screen.getByRole("navigation", { name: "Breadcrumb" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Do thing" })).toBeInTheDocument();
+  });
+
+  it("renders without breadcrumbs or an action", () => {
+    renderWithProviders(<PageHeader title="Search" />);
+
+    expect(screen.getByRole("heading", { name: "Search" })).toBeInTheDocument();
+    expect(screen.queryByRole("navigation")).not.toBeInTheDocument();
   });
 });
