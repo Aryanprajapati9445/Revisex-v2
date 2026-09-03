@@ -5,6 +5,7 @@ import { BranchesPage } from "@/routes/BranchesPage";
 import { LoginPage } from "@/routes/LoginPage";
 import { ModerationPage } from "@/routes/ModerationPage";
 import { MyUploadsPage } from "@/routes/MyUploadsPage";
+import { NotFoundPage } from "@/routes/NotFoundPage";
 import { NoteDetailPage } from "@/routes/NoteDetailPage";
 import { RegisterPage } from "@/routes/RegisterPage";
 import { SettingsPage } from "@/routes/SettingsPage";
@@ -14,10 +15,6 @@ import { SubjectNotesPage } from "@/routes/SubjectNotesPage";
 import { SubjectsPage } from "@/routes/SubjectsPage";
 import { UploadPage } from "@/routes/UploadPage";
 import { UsersPage } from "@/routes/UsersPage";
-
-function Placeholder({ name }: { name: string }) {
-  return <div className="text-text-muted">{name} — not built yet</div>;
-}
 
 export function AppRoutes() {
   return (
@@ -40,7 +37,7 @@ export function AppRoutes() {
           <Route path="admin/users" element={<UsersPage />} />
         </Route>
 
-        <Route path="*" element={<Placeholder name="Not found" />} />
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
     </Routes>
   );
