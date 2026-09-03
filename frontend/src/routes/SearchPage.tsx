@@ -2,13 +2,15 @@ import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { ErrorState } from "@/components/layout/ErrorState";
+import { LoadingState } from "@/components/layout/LoadingState";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { Pagination } from "@/components/layout/Pagination";
+import { SearchInput } from "@/components/ui/search-input";
 import { NoteCard } from "@/features/notes/NoteCard";
 import { NoteTypeFilter } from "@/features/notes/NoteFilters";
 import { useNotes } from "@/features/notes/queries";
 import type { NoteType } from "@/lib/api-types";
 
-/** Long enough to swallow a burst of typing, short enough to feel immediate. */
 const SEARCH_DEBOUNCE_MS = 300;
 
 export function SearchPage() {
@@ -18,10 +20,6 @@ export function SearchPage() {
   const q = searchParams.get("q") ?? "";
   const noteType = (searchParams.get("note_type") ?? "") as NoteType | "";
 
-  // The field is driven locally and the URL follows once typing settles. Each
-  // distinct term is a Postgres full-text query, so writing the param on every
-  // keystroke issued one request per character. The query itself still reads
-  // `q` from the URL, so debouncing the write debounces the fetch.
   const [term, setTerm] = useState(q);
 
   useEffect(() => {
@@ -48,26 +46,17 @@ export function SearchPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <h1 className="text-title font-bold">Search</h1>
+      <PageHeader title="Search" />
 
       <div className="flex flex-wrap items-center gap-4">
-        <label className="flex flex-1 items-center gap-2">
-          <span className="sr-only">Search notes</span>
-          <input
-            type="search"
-            placeholder="Search notes…"
-            value={term}
-            onChange={(event) => setTerm(event.target.value)}
-            className="w-full rounded-control bg-surface px-2.5 py-1.5 text-ui outline-none"
-          />
-        </label>
+        <SearchInput value={term} onChange={setTerm} />
         <NoteTypeFilter value={noteType} onChange={(value) => updateParam("note_type", value)} />
       </div>
 
       {notes.error ? (
         <ErrorState error={notes.error} />
       ) : notes.isPending ? (
-        <div className="text-text-muted">Searching…</div>
+        <LoadingState count={4} />
       ) : notes.data.items.length === 0 ? (
         <EmptyState title="No notes matched" hint="Try a different search or filter." />
       ) : (
