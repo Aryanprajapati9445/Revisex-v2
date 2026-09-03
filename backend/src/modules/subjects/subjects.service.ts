@@ -31,3 +31,8 @@ export async function listActiveSubjects(
   // count() always returns exactly one row.
   return { rows, total: countRows[0]!.total };
 }
+
+export async function getSubjectById(id: string): Promise<Subject | null> {
+  const [row] = await db.select().from(schema.subjects).where(eq(schema.subjects.id, id)).limit(1);
+  return row ?? null;
+}

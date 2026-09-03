@@ -18,6 +18,22 @@ export function useProgram(id: string) {
   });
 }
 
+export function useBranch(id: string) {
+  return useQuery({
+    queryKey: queryKeys.branch(id),
+    queryFn: () => api.get<Branch>(`/api/branches/${id}`),
+    enabled: id !== "",
+  });
+}
+
+export function useSubject(id: string) {
+  return useQuery({
+    queryKey: queryKeys.subject(id),
+    queryFn: () => api.get<Subject>(`/api/subjects/${id}`),
+    enabled: id !== "",
+  });
+}
+
 export function useBranches(programId: string, page = 1, limit = DEFAULT_LIMIT) {
   return useQuery({
     queryKey: queryKeys.branches(programId, page, limit),

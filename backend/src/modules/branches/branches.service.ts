@@ -16,3 +16,8 @@ export async function listActiveBranches(
   // count() always returns exactly one row.
   return { rows, total: countRows[0]!.total };
 }
+
+export async function getBranchById(id: string): Promise<Branch | null> {
+  const [row] = await db.select().from(schema.branches).where(eq(schema.branches.id, id)).limit(1);
+  return row ?? null;
+}

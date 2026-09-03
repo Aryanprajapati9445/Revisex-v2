@@ -54,3 +54,31 @@ describe("GET /api/subjects", () => {
     expect(res.status).toBe(422);
   });
 });
+
+describe("GET /api/subjects/:id", () => {
+  it("returns a single subject so the notes page can name it", async () => {
+    const program = await createProgram();
+    const branch = await createBranch(program.id);
+    const subject = await createSubject(branch.id, { code: "CS101", semester: 3 });
+
+    const res = await request(app).get(`/api/subjects/${subject.id}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.id).toBe(subject.id);
+    expect(res.body.data.code).toBe("CS101");
+    expect(res.body.data.semester).toBe(3);
+    expect(res.body.data.branch_id).toBe(branch.id);
+  });
+
+  it("rejects a malformed id with 400, not 500", async () => {
+    const res = await request(app).get("/api/subjects/not-a-uuid");
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("returns 404 for a well-formed but unknown id", async () => {
+    const res = await request(app).get("/api/subjects/00000000-0000-4000-8000-000000000000");
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("NOT_FOUND");
+  });
+});

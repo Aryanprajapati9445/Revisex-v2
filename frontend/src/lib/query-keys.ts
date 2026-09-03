@@ -33,6 +33,8 @@ export const queryKeys = {
   // resolved first serve the other a truncated or oversized page.
   programs: (page = 1, limit = DEFAULT_LIMIT) => ["programs", page, limit] as const,
   program: (id: string) => ["program", id] as const,
+  branch: (id: string) => ["branch", id] as const,
+  subject: (id: string) => ["subject", id] as const,
   branches: (programId: string, page = 1, limit = DEFAULT_LIMIT) =>
     ["branches", programId, page, limit] as const,
   subjects: (branchId: string, semester?: number, page = 1, limit = DEFAULT_LIMIT) =>

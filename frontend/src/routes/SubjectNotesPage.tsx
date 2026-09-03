@@ -7,6 +7,7 @@ import { Pagination } from "@/components/layout/Pagination";
 import { NoteCard } from "@/features/notes/NoteCard";
 import { NoteTypeFilter } from "@/features/notes/NoteFilters";
 import { useNotes } from "@/features/notes/queries";
+import { useBranch, useProgram, useSubject } from "@/features/taxonomy/queries";
 import type { NoteType } from "@/lib/api-types";
 
 export function SubjectNotesPage() {
@@ -14,13 +15,33 @@ export function SubjectNotesPage() {
   const [page, setPage] = useState(1);
   const [noteType, setNoteType] = useState<NoteType | "">("");
 
+  // Resolved from the subject id alone, so a deep link or a shared URL still
+  // names where it is in the hierarchy. Each step feeds the next.
+  const subject = useSubject(subjectId);
+  const branch = useBranch(subject.data?.branch_id ?? "");
+  const program = useProgram(branch.data?.program_id ?? "");
+
   const notes = useNotes({ subject_id: subjectId, note_type: noteType || undefined, page });
+
+  if (subject.error) return <ErrorState error={subject.error} />;
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
-        <Breadcrumbs items={[{ label: "Programs", to: "/" }, { label: "Notes" }]} />
-        <h1 className="text-title font-bold">Notes</h1>
+        <Breadcrumbs
+          items={[
+            { label: "Programs", to: "/" },
+            ...(program.data ? [{ label: program.data.name, to: `/programs/${program.data.id}` }] : []),
+            ...(branch.data ? [{ label: branch.data.name, to: `/branches/${branch.data.id}` }] : []),
+            { label: subject.data?.name ?? "Notes" },
+          ]}
+        />
+        <h1 className="text-title font-bold">{subject.data?.name ?? "Notes"}</h1>
+        {subject.data && (
+          <p className="text-ui text-text-muted">
+            {subject.data.code} · Semester {subject.data.semester}
+          </p>
+        )}
       </div>
 
       <NoteTypeFilter

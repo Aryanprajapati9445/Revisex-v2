@@ -60,3 +60,29 @@ describe("GET /api/branches", () => {
     expect(res.body.data.pagination.total).toBe(0);
   });
 });
+
+describe("GET /api/branches/:id", () => {
+  it("returns a single branch so a deep link can name it", async () => {
+    const program = await createProgram();
+    const branch = await createBranch(program.id, { code: "CSE" });
+
+    const res = await request(app).get(`/api/branches/${branch.id}`);
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.id).toBe(branch.id);
+    expect(res.body.data.code).toBe("CSE");
+    expect(res.body.data.program_id).toBe(program.id);
+  });
+
+  it("rejects a malformed id with 400, not 500", async () => {
+    const res = await request(app).get("/api/branches/not-a-uuid");
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("VALIDATION_ERROR");
+  });
+
+  it("returns 404 for a well-formed but unknown id", async () => {
+    const res = await request(app).get("/api/branches/00000000-0000-4000-8000-000000000000");
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe("NOT_FOUND");
+  });
+});

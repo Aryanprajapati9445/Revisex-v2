@@ -5,7 +5,7 @@ import { EmptyState } from "@/components/layout/EmptyState";
 import { ErrorState } from "@/components/layout/ErrorState";
 import { Pagination } from "@/components/layout/Pagination";
 import { TaxonomyCard } from "@/features/taxonomy/TaxonomyCard";
-import { useBranches, useProgram, useSubjects } from "@/features/taxonomy/queries";
+import { useBranch, useProgram, useSubjects } from "@/features/taxonomy/queries";
 import { cn } from "@/lib/utils";
 
 export function SubjectsPage() {
@@ -16,19 +16,19 @@ export function SubjectsPage() {
   const semesterParam = searchParams.get("semester");
   const semester = semesterParam ? Number(semesterParam) : 1;
 
-  // The branch endpoint is program-scoped, so the branch record is reached
-  // through its program. programId is carried in the URL when the user
-  // navigated here from a program page; when it is absent (deep link) the
-  // subject list still works, only the breadcrumb is shorter.
-  const programId = searchParams.get("program_id") ?? "";
-  const program = useProgram(programId);
-  const branches = useBranches(programId);
-  const branch = branches.data?.items.find((b) => b.id === branchId);
+  // Resolved from the branch id alone: a deep link or shared URL names the
+  // branch and sizes the semester tabs correctly, with no query param to carry.
+  const branchQuery = useBranch(branchId);
+  const branch = branchQuery.data;
+  const program = useProgram(branch?.program_id ?? "");
 
   const subjects = useSubjects(branchId, semester, page);
 
+  if (branchQuery.error) return <ErrorState error={branchQuery.error} />;
   if (subjects.error) return <ErrorState error={subjects.error} />;
 
+  // Falls back to 8 only until the program loads; the real count comes from the
+  // program's duration_semesters, which the DB trigger also enforces.
   const semesterCount = program.data?.duration_semesters ?? 8;
 
   return (

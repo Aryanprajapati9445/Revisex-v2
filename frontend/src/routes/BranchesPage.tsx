@@ -32,10 +32,7 @@ export function BranchesPage() {
             {branches.data.items.map((branch) => (
               <TaxonomyCard
                 key={branch.id}
-                // Carries the program id so the subjects page can resolve its
-                // breadcrumb — /api/branches is program-scoped, so there is no
-                // way back to the program from a branch id alone.
-                to={`/branches/${branch.id}?program_id=${programId}`}
+                to={`/branches/${branch.id}`}
                 code={branch.code}
                 name={branch.name}
               />
