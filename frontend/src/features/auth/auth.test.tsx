@@ -112,6 +112,47 @@ describe("session restore", () => {
   });
 });
 
+describe("session teardown", () => {
+  it("discards cached data on logout so the next user cannot read it", async () => {
+    localStorage.setItem("refreshToken", "stored-ref");
+    server.use(
+      http.post(`${API}/api/auth/refresh`, () =>
+        HttpResponse.json({ success: true, data: { accessToken: "a", refreshToken: "r" } })
+      ),
+      http.get(`${API}/api/auth/me`, () => HttpResponse.json({ success: true, data: student })),
+      http.post(`${API}/api/auth/logout`, () => HttpResponse.json({ success: true, data: null }))
+    );
+
+    function LogoutButton() {
+      const { logout } = useAuth();
+      return (
+        <button type="button" onClick={logout}>
+          sign out
+        </button>
+      );
+    }
+
+    const { queryClient } = renderWithProviders(
+      <>
+        <WhoAmI />
+        <LogoutButton />
+      </>
+    );
+
+    await screen.findByText("hello Student");
+
+    // Stand in for anything scoped the app had already fetched — the user
+    // roster and the moderation queue are cached exactly like this.
+    queryClient.setQueryData(["users", { page: 1 }], { items: [{ email: "private@test.edu" }] });
+    expect(queryClient.getQueryData(["users", { page: 1 }])).toBeDefined();
+
+    await userEvent.click(screen.getByRole("button", { name: /sign out/i }));
+
+    expect(await screen.findByText("anonymous")).toBeInTheDocument();
+    expect(queryClient.getQueryData(["users", { page: 1 }])).toBeUndefined();
+  });
+});
+
 describe("ProtectedRoute", () => {
   it("redirects an anonymous visitor to /login", async () => {
     renderWithProviders(

@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { api, setAccessToken, setRefreshHandler } from "@/lib/api-client";
 import type { AuthPayload, User } from "@/lib/api-types";
@@ -29,27 +30,39 @@ function writeStoredRefreshToken(token: string | null): void {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const queryClient = useQueryClient();
   const [user, setUser] = useState<User | null>(null);
   const [status, setStatus] = useState<AuthStatus>("loading");
   // Held in a ref, not state: the refresh handler must read the current value
   // without re-registering itself on every render.
   const refreshTokenRef = useRef<string | null>(readStoredRefreshToken());
 
-  const applySession = useCallback((payload: AuthPayload) => {
-    setAccessToken(payload.accessToken);
-    refreshTokenRef.current = payload.refreshToken;
-    writeStoredRefreshToken(payload.refreshToken);
-    setUser(payload.user);
-    setStatus("authenticated");
-  }, []);
+  const applySession = useCallback(
+    (payload: AuthPayload) => {
+      setAccessToken(payload.accessToken);
+      refreshTokenRef.current = payload.refreshToken;
+      writeStoredRefreshToken(payload.refreshToken);
+      // A new identity must never be served anything cached under the previous
+      // one — on a shared machine that is somebody else's data.
+      queryClient.clear();
+      setUser(payload.user);
+      setStatus("authenticated");
+    },
+    [queryClient]
+  );
 
   const clearSession = useCallback(() => {
     setAccessToken(null);
     refreshTokenRef.current = null;
     writeStoredRefreshToken(null);
+    // Signing out has to discard the cache too. It holds scoped, private data
+    // — the moderation queue, the user roster and its emails, own uploads —
+    // and staleTime would otherwise serve it to the next person on this tab
+    // without so much as a refetch.
+    queryClient.clear();
     setUser(null);
     setStatus("anonymous");
-  }, []);
+  }, [queryClient]);
 
   // Installed into api-client so any 401 triggers exactly one refresh attempt.
   useEffect(() => {
