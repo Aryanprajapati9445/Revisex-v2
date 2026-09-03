@@ -69,6 +69,18 @@ function refreshOnce(): Promise<boolean> {
 
 type Query = Record<string, string | number | boolean | undefined | null>;
 
+export interface RequestOptions {
+  /**
+   * Skip the 401 -> refresh -> retry cycle for this request.
+   *
+   * The refresh call itself MUST set this. Without it, a rejected refresh
+   * token deadlocks: the 401 triggers refreshOnce(), whose handler calls this
+   * same endpoint, and that inner call then awaits the very in-flight refresh
+   * promise it is running inside — so neither ever settles.
+   */
+  skipAuthRefresh?: boolean;
+}
+
 function buildUrl(path: string, query?: Query): string {
   const url = new URL(path, BASE_URL);
   if (query) {
@@ -93,7 +105,14 @@ async function toApiError(response: Response): Promise<ApiError> {
   return new ApiError(response.status, "INTERNAL_ERROR", `Request failed with status ${response.status}`);
 }
 
-async function request<T>(method: string, path: string, body?: unknown, query?: Query, isRetry = false): Promise<T> {
+async function request<T>(
+  method: string,
+  path: string,
+  body?: unknown,
+  query?: Query,
+  isRetry = false,
+  options?: RequestOptions
+): Promise<T> {
   const headers = new Headers({ Accept: "application/json" });
   if (body !== undefined) headers.set("Content-Type", "application/json");
   if (accessToken) headers.set("Authorization", `Bearer ${accessToken}`);
@@ -104,9 +123,9 @@ async function request<T>(method: string, path: string, body?: unknown, query?: 
     body: body === undefined ? undefined : JSON.stringify(body),
   });
 
-  if (response.status === 401 && !isRetry) {
+  if (response.status === 401 && !isRetry && !options?.skipAuthRefresh) {
     const refreshed = await refreshOnce();
-    if (refreshed) return request<T>(method, path, body, query, true);
+    if (refreshed) return request<T>(method, path, body, query, true, options);
   }
 
   if (!response.ok) throw await toApiError(response);
@@ -118,8 +137,10 @@ async function request<T>(method: string, path: string, body?: unknown, query?: 
 }
 
 export const api = {
-  get: <T>(path: string, query?: Query) => request<T>("GET", path, undefined, query),
-  post: <T>(path: string, body?: unknown) => request<T>("POST", path, body),
+  get: <T>(path: string, query?: Query, options?: RequestOptions) =>
+    request<T>("GET", path, undefined, query, false, options),
+  post: <T>(path: string, body?: unknown, options?: RequestOptions) =>
+    request<T>("POST", path, body, undefined, false, options),
   patch: <T>(path: string, body?: unknown) => request<T>("PATCH", path, body),
   delete: <T>(path: string) => request<T>("DELETE", path),
 };
