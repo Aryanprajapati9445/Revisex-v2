@@ -19,6 +19,9 @@ import { tagsRouter } from "./modules/tags/tags.routes.js";
 import { bookmarksRouter } from "./modules/bookmarks/bookmarks.routes.js";
 import { ratingsRouter } from "./modules/ratings/ratings.routes.js";
 import { commentsRouter } from "./modules/comments/comments.routes.js";
+import { rolesRouter } from "./modules/admin/roles.routes.js";
+import { adminUsersRouter } from "./modules/admin/admin-users.routes.js";
+import { auditRouter } from "./modules/admin/audit.routes.js";
 
 export function createApp() {
   const app = express();
@@ -52,6 +55,13 @@ export function createApp() {
   app.use("/api/bookmarks", bookmarksRouter);
   app.use("/api/ratings", ratingsRouter);
   app.use("/api/comments", commentsRouter);
+
+  // Admin dashboard — permission-gated (requirePermission), a separate
+  // surface from /api/users, which keeps its existing requireRole gating
+  // untouched for the domain-scoped admins that already depend on it.
+  app.use("/api/admin", rolesRouter);
+  app.use("/api/admin/users", adminUsersRouter);
+  app.use("/api/admin/audit-log", auditRouter);
 
   app.use(notFound);
   app.use(errorHandler);

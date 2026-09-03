@@ -68,3 +68,41 @@ export async function createUserFixture(options: CreateUserOptions) {
   );
   return { user: rows[0], password };
 }
+
+// Admin RBAC fixtures ---------------------------------------------------
+
+/** Inserts the fixed permission catalog. Idempotent within a test run. */
+export async function seedPermissionCatalog(): Promise<void> {
+  await pool.query(
+    `INSERT INTO permissions (id, description) VALUES
+       ('users.read', 'View admin-managed user accounts'),
+       ('users.create', 'Create admin-managed user accounts'),
+       ('users.update', 'Edit admin-managed user accounts'),
+       ('users.delete', 'Delete admin-managed user accounts'),
+       ('roles.manage', 'Create, edit and assign admin roles'),
+       ('audit.read', 'View the audit log'),
+       ('settings.update', 'Change platform settings')
+     ON CONFLICT (id) DO NOTHING`
+  );
+}
+
+export async function createRoleFixture(permissionIds: string[] = [], overrides: { name?: string; isSystem?: boolean } = {}) {
+  const name = overrides.name ?? unique("Role");
+  const { rows } = await pool.query(
+    `INSERT INTO roles (name, is_system) VALUES ($1, $2) RETURNING *`,
+    [name, overrides.isSystem ?? false]
+  );
+  const role = rows[0];
+  if (permissionIds.length > 0) {
+    const values = permissionIds.map((_, i) => `($1, $${i + 2})`).join(", ");
+    await pool.query(`INSERT INTO role_permissions (role_id, permission_id) VALUES ${values}`, [
+      role.id,
+      ...permissionIds,
+    ]);
+  }
+  return role;
+}
+
+export async function assignUserRole(userId: string, roleId: string): Promise<void> {
+  await pool.query(`INSERT INTO user_roles (user_id, role_id) VALUES ($1, $2)`, [userId, roleId]);
+}

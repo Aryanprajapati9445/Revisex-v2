@@ -26,3 +26,5 @@ export const fileUploadStatusEnum = pgEnum("file_upload_status", [
   "uploaded",
   "failed",
 ]);
+
+export const auditOutcomeEnum = pgEnum("audit_outcome", ["success", "failure"]);

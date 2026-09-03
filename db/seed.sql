@@ -198,4 +198,58 @@ JOIN notes n ON n.title = v.note_title
 JOIN users u ON u.email = v.email
 WHERE NOT EXISTS (SELECT 1 FROM comments c WHERE c.body = v.body);
 
+-- Admin RBAC ------------------------------------------------------------
+-- A separate axis from users.role above: which admin-dashboard role(s) a
+-- user holds. The catalog here must stay in sync with
+-- backend/src/lib/permissions.ts's PERMISSION_CATALOG by hand — there is no
+-- single source of truth linking the two, since one is a DB table (edited
+-- at runtime by a Super Admin) and the other is the fixed set the app knows
+-- how to enforce.
+INSERT INTO permissions (id, description) VALUES
+    ('users.read',      'View admin-managed user accounts'),
+    ('users.create',    'Create admin-managed user accounts'),
+    ('users.update',    'Edit admin-managed user accounts'),
+    ('users.delete',    'Delete admin-managed user accounts'),
+    ('roles.manage',    'Create, edit and assign admin roles'),
+    ('audit.read',      'View the audit log'),
+    ('settings.update', 'Change platform settings')
+ON CONFLICT (id) DO NOTHING;
+
+INSERT INTO roles (name, description, is_system) VALUES
+    ('Super Admin', 'Full access, including managing roles and permissions.', TRUE),
+    ('Admin',       'Manages user accounts and views the audit log.',         TRUE),
+    ('Manager',     'Views and edits user accounts.',                        TRUE),
+    ('Viewer',      'Read-only access to user accounts.',                    TRUE)
+ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, v.permission_id
+FROM (VALUES
+    ('Super Admin', 'users.read'),
+    ('Super Admin', 'users.create'),
+    ('Super Admin', 'users.update'),
+    ('Super Admin', 'users.delete'),
+    ('Super Admin', 'roles.manage'),
+    ('Super Admin', 'audit.read'),
+    ('Super Admin', 'settings.update'),
+    ('Admin',       'users.read'),
+    ('Admin',       'users.create'),
+    ('Admin',       'users.update'),
+    ('Admin',       'users.delete'),
+    ('Admin',       'audit.read'),
+    ('Manager',     'users.read'),
+    ('Manager',     'users.update'),
+    ('Viewer',      'users.read')
+) AS v(role_name, permission_id)
+JOIN roles r ON r.name = v.role_name
+ON CONFLICT DO NOTHING;
+
+-- The platform admin seeded above (people section) is also the first
+-- Super Admin of the new admin dashboard.
+INSERT INTO user_roles (user_id, role_id)
+SELECT u.id, r.id
+FROM users u, roles r
+WHERE u.email = 'root@college.edu' AND r.name = 'Super Admin'
+ON CONFLICT DO NOTHING;
+
 COMMIT;
