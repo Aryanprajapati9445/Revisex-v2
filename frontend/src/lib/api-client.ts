@@ -40,10 +40,6 @@ export function setAccessToken(token: string | null): void {
   accessToken = token;
 }
 
-export function getAccessToken(): string | null {
-  return accessToken;
-}
-
 /**
  * Called on a 401. Returns true if it obtained a new access token (the request
  * is then retried once), false to give up. AuthProvider installs this.

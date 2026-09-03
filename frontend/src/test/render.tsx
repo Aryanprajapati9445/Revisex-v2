@@ -4,7 +4,7 @@ import type { ReactElement, ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { AuthProvider } from "@/features/auth/AuthProvider";
 
-export function makeTestQueryClient() {
+function makeTestQueryClient() {
   return new QueryClient({
     defaultOptions: {
       // Retries turn a deliberate 4xx test into a multi-second hang.
