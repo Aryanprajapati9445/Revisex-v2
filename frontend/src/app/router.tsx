@@ -1,6 +1,10 @@
-import { Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes } from "react-router-dom";
+import { AdminShell } from "@/components/layout/AdminShell";
 import { AppShell } from "@/components/layout/AppShell";
 import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
+import { AdminUsersPage } from "@/routes/admin/AdminUsersPage";
+import { AuditLogPage } from "@/routes/admin/AuditLogPage";
+import { RolesPage } from "@/routes/admin/RolesPage";
 import { BranchesPage } from "@/routes/BranchesPage";
 import { HomePage } from "@/routes/HomePage";
 import { LoginPage } from "@/routes/LoginPage";
@@ -37,6 +41,20 @@ export function AppRoutes() {
           <Route path="settings" element={<SettingsPage />} />
           <Route path="moderate" element={<ModerationPage />} />
           <Route path="admin/users" element={<UsersPage />} />
+
+          {/*
+            A separate, permission-gated dashboard (see docs/superpowers) —
+            "admin/users" above is the older domain-scope user management
+            (requireRole), left untouched. This tree uses requirePermission
+            on every request, so /admin/accounts is a different path from
+            the legacy /admin/users rather than a collision.
+          */}
+          <Route path="admin" element={<AdminShell />}>
+            <Route index element={<Navigate to="accounts" replace />} />
+            <Route path="accounts" element={<AdminUsersPage />} />
+            <Route path="roles" element={<RolesPage />} />
+            <Route path="audit-log" element={<AuditLogPage />} />
+          </Route>
         </Route>
 
         <Route path="*" element={<NotFoundPage />} />

@@ -98,3 +98,32 @@ export interface AuthPayload {
   accessToken: string;
   refreshToken: string;
 }
+
+// Admin RBAC — a separate axis from UserRole above (see backend/src/types).
+export interface Permission {
+  id: string;
+  description: string;
+}
+
+export interface Role {
+  id: string;
+  name: string;
+  description: string | null;
+  is_system: boolean;
+  created_at: string;
+  updated_at: string;
+  permissions: string[];
+}
+
+export type AuditOutcome = "success" | "failure";
+
+export interface AuditLogEntry {
+  id: string;
+  actor_user_id: string | null;
+  action: string;
+  resource: string;
+  resource_id: string | null;
+  outcome: AuditOutcome;
+  metadata: Record<string, unknown> | null;
+  created_at: string;
+}

@@ -25,6 +25,15 @@ export interface UserFilters {
   limit?: number;
 }
 
+export interface AuditLogFilters {
+  actor_user_id?: string;
+  action?: string;
+  from?: string;
+  to?: string;
+  page?: number;
+  limit?: number;
+}
+
 export const queryKeys = {
   me: ["me"] as const,
 
@@ -45,4 +54,13 @@ export const queryKeys = {
   noteFiles: (id: string) => ["note", id, "files"] as const,
 
   users: (filters: UserFilters) => ["users", filters] as const,
+
+  // Admin RBAC — a separate axis from the users/programs/branches keys above.
+  myPermissions: ["admin", "permissions", "me"] as const,
+  permissionsCatalog: ["admin", "permissions"] as const,
+  roles: ["admin", "roles"] as const,
+  role: (id: string) => ["admin", "roles", id] as const,
+  userRoles: (userId: string) => ["admin", "users", userId, "roles"] as const,
+  adminUsers: (filters: UserFilters) => ["admin", "users", filters] as const,
+  auditLog: (filters: AuditLogFilters) => ["admin", "audit-log", filters] as const,
 } as const;

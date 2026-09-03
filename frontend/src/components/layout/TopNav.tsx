@@ -1,4 +1,5 @@
 import { Link, NavLink } from "react-router-dom";
+import { useMyPermissions } from "@/features/admin/queries";
 import { RoleGate } from "@/features/auth/RoleGate";
 import { useAuth } from "@/features/auth/useAuth";
 import { cn } from "@/lib/utils";
@@ -15,6 +16,7 @@ function navClass({ isActive }: { isActive: boolean }) {
 
 export function TopNav() {
   const { user, status, logout } = useAuth();
+  const { data: permissions } = useMyPermissions();
 
   return (
     <header className="sticky top-0 z-10 bg-background/90 backdrop-blur">
@@ -43,6 +45,11 @@ export function TopNav() {
                   Users
                 </NavLink>
               </RoleGate>
+              {permissions && permissions.size > 0 && (
+                <NavLink to="/admin" className={navClass}>
+                  Admin
+                </NavLink>
+              )}
             </>
           )}
         </nav>
