@@ -48,13 +48,13 @@ function RoleEditor({ role, onClose }: { role: Role; onClose: () => void }) {
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{role.name}</DialogTitle>
         </DialogHeader>
         {role.description && <p className="-mt-2 text-caption text-text-tertiary">{role.description}</p>}
 
-        <div className="flex max-h-80 flex-col gap-2 overflow-y-auto">
+        <div className="grid max-h-96 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
           {catalog.data?.map((permission) => (
             <label key={permission.id} className="flex items-start gap-2 rounded-control px-2 py-1.5 hover:bg-surface">
               <Checkbox
@@ -129,21 +129,23 @@ function CreateRoleForm({ onClose }: { onClose: () => void }) {
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Create role</DialogTitle>
         </DialogHeader>
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="role-name">Name</Label>
-            <Input id="role-name" required value={name} onChange={(e) => setName(e.target.value)} />
-          </div>
-          <div className="flex flex-col gap-1.5">
-            <Label htmlFor="role-description">Description</Label>
-            <Input id="role-description" value={description} onChange={(e) => setDescription(e.target.value)} />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="role-name">Name</Label>
+              <Input id="role-name" required value={name} onChange={(e) => setName(e.target.value)} />
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <Label htmlFor="role-description">Description</Label>
+              <Input id="role-description" value={description} onChange={(e) => setDescription(e.target.value)} />
+            </div>
           </div>
 
-          <div className="flex max-h-60 flex-col gap-2 overflow-y-auto">
+          <div className="grid max-h-72 grid-cols-1 gap-2 overflow-y-auto sm:grid-cols-2">
             {catalog.data?.map((permission) => (
               <label key={permission.id} className="flex items-center gap-2 rounded-control px-2 py-1.5 hover:bg-surface">
                 <Checkbox checked={selected.has(permission.id)} onCheckedChange={() => toggle(permission.id)} />
