@@ -14,7 +14,6 @@ import { branchesRouter } from "./modules/branches/branches.routes.js";
 import { subjectsRouter } from "./modules/subjects/subjects.routes.js";
 import { usersRouter } from "./modules/users/users.routes.js";
 import { notesRouter } from "./modules/notes/notes.routes.js";
-import { filesRouter } from "./modules/files/files.routes.js";
 import { tagsRouter } from "./modules/tags/tags.routes.js";
 import { bookmarksRouter } from "./modules/bookmarks/bookmarks.routes.js";
 import { ratingsRouter } from "./modules/ratings/ratings.routes.js";
@@ -51,7 +50,6 @@ export function createApp() {
   app.use("/api/subjects", subjectsRouter);
   app.use("/api/users", usersRouter);
   app.use("/api/notes", notesRouter);
-  app.use("/api/files", filesRouter);
   app.use("/api/tags", tagsRouter);
   app.use("/api/bookmarks", bookmarksRouter);
   app.use("/api/ratings", ratingsRouter);

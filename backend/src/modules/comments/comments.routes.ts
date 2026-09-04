@@ -1,11 +1,11 @@
 import { Router } from "express";
-import { ApiError } from "../../lib/apiError.js";
+import { optionalAuth, requireAuth } from "../../middleware/auth.js";
+import * as controller from "./comments.controller.js";
 
-// Stub — not implemented yet. Wire up comments.controller.ts / comments.service.ts
-// following the pattern in modules/programs/ once the design for this
-// resource (validation, auth/scope rules) is settled.
 export const commentsRouter = Router();
 
-commentsRouter.use((_req, _res, next) => {
-  next(new ApiError(501, "NOT_IMPLEMENTED", "comments endpoints not implemented yet"));
-});
+// Reading a thread on an approved note is public, matching the note itself.
+commentsRouter.get("/", optionalAuth, controller.listComments);
+commentsRouter.post("/", requireAuth, controller.createComment);
+commentsRouter.patch("/:id", requireAuth, controller.updateComment);
+commentsRouter.delete("/:id", requireAuth, controller.deleteComment);

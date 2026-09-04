@@ -29,6 +29,14 @@ export const users = pgTable(
     branch_id: uuid("branch_id").references(() => branches.id, { onDelete: "restrict" }),
 
     enrollment_year: smallint("enrollment_year"),
+    // Which semester this student is actually in, so their home page can open
+    // on the subjects they are taking now.
+    //
+    // Nullable and self-declared rather than derived from enrollment_year:
+    // registration never collects an enrollment year, so it is NULL for every
+    // real signup, and deriving a semester from one would additionally need an
+    // academic-calendar assumption the schema has nowhere to record.
+    current_semester: smallint("current_semester"),
     created_at: timestamp("created_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
     updated_at: timestamp("updated_at", { withTimezone: true, mode: "string" }).notNull().defaultNow(),
   },
@@ -66,6 +74,13 @@ export const users = pgTable(
     uniqueIndex("users_provider_identity_key")
       .on(table.auth_provider, table.provider_user_id)
       .where(sql`${table.auth_provider} is not null`),
+    // Lower bound only, mirroring subjects_semester_min. The ceiling is the
+    // student's own program duration, which a CHECK cannot read across tables
+    // — the API validates it against the program the same way.
+    check(
+      "users_current_semester_min",
+      sql`${table.current_semester} is null or ${table.current_semester} >= 1`
+    ),
     index("idx_users_branch").on(table.branch_id).where(sql`${table.branch_id} is not null`),
     index("idx_users_program").on(table.program_id).where(sql`${table.program_id} is not null`),
     index("idx_users_role").on(table.role),

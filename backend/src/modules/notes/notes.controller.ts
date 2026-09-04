@@ -4,8 +4,10 @@ import { ApiError } from "../../lib/apiError.js";
 import { buildPaginationMeta, parsePagination } from "../../lib/pagination.js";
 import { sendSuccess } from "../../lib/response.js";
 import { isInScope, resolveSubjectScope } from "../../lib/taxonomyAccess.js";
+import { assertLoadedNoteVisible } from "../../lib/noteAccess.js";
 import type { AuthUser } from "../../middleware/auth.js";
-import type { NoteFile } from "../../types/index.js";
+import type { Note, NoteFile } from "../../types/index.js";
+import { normalizeTagName, setNoteTags } from "../tags/tags.service.js";
 import * as notesService from "./notes.service.js";
 
 const noteTypeEnum = z.enum(["lecture_notes", "pyq", "lab_manual", "assignment", "book", "other"]);
@@ -27,10 +29,26 @@ async function loadNoteOr404(id: unknown) {
 }
 
 /**
+ * Reading a note, its file list and its download links all answer the same
+ * question — may this viewer know it exists — so all three go through the one
+ * rule in lib/noteAccess rather than restating it three times, which is how
+ * they had drifted apart.
+ */
+async function assertNoteReadable(viewer: AuthUser | undefined, note: Note): Promise<void> {
+  await assertLoadedNoteVisible(viewer, {
+    id: note.id,
+    status: note.status,
+    uploaderId: note.uploader_id,
+  });
+}
+
+/**
  * Whether a privileged user's own program/branch scope covers the given note.
- * Superusers are exempt (always in scope). Callers still need to decide
- * separately whether the user is even a privileged role or the note's owner —
- * this only answers the scope question for an admin who is neither.
+ * Superusers are exempt (always in scope).
+ *
+ * Editing and deleting keep this rather than the visibility rule above: they
+ * turn on ownership first and consult scope only for a non-owning admin, so
+ * they need the scope answer on its own.
  */
 async function isNoteInScope(user: AuthUser, noteId: string): Promise<boolean> {
   if (user.role === "superuser") return true;
@@ -43,12 +61,18 @@ async function isNoteInScope(user: AuthUser, noteId: string): Promise<boolean> {
   return false;
 }
 
+// Tags are free text from the uploader, normalized and de-duplicated
+// server-side (see tags.service) so "Unit 1" and "unit  1" do not become two
+// tags nobody can tell apart. Capped so one upload cannot flood the tag list.
+const tagListSchema = z.array(z.string().trim().min(1).max(50)).max(10);
+
 const createNoteSchema = z.object({
   subject_id: z.string().uuid(),
   title: z.string().trim().min(1).max(200),
   description: z.string().max(5000).nullable().optional(),
   note_type: noteTypeEnum.default("other"),
   exam_year: z.number().int().min(1950).max(2200).nullable().optional(),
+  tags: tagListSchema.optional(),
 });
 
 export async function createNote(req: Request, res: Response, next: NextFunction) {
@@ -75,6 +99,7 @@ export async function createNote(req: Request, res: Response, next: NextFunction
       note_type: input.note_type,
       exam_year: input.exam_year ?? null,
     });
+    if (input.tags) await setNoteTags(note.id, input.tags);
     sendSuccess(res, note, 201);
   } catch (err) {
     next(err);
@@ -83,20 +108,29 @@ export async function createNote(req: Request, res: Response, next: NextFunction
 
 const listQuerySchema = z.object({
   subject_id: z.string().uuid().optional(),
+  branch_id: z.string().uuid().optional(),
+  semester: z.coerce.number().int().min(1).max(20).optional(),
   note_type: noteTypeEnum.optional(),
   status: noteStatusEnum.optional(),
+  tag: z.string().trim().min(1).max(50).optional(),
+  uploader_id: z.string().uuid().optional(),
   q: z.string().min(1).max(200).optional(),
+  sort: z.enum(["recent", "top_rated", "most_downloaded", "most_saved"]).default("recent"),
 });
 
 export async function listNotes(req: Request, res: Response, next: NextFunction) {
   try {
-    const query = listQuerySchema.parse(req.query);
+    const { sort, ...query } = listQuerySchema.parse(req.query);
     const { page, limit, offset } = parsePagination(req.query);
 
     const status = query.status && !req.user ? "approved" : query.status;
     const viewer = req.user ?? anonymousViewer;
 
-    const { rows, total } = await notesService.listNotes({ filters: { ...query, status }, viewer }, limit, offset);
+    const { rows, total } = await notesService.listNotes(
+      { filters: { ...query, status, tag: query.tag ? normalizeTagName(query.tag) : undefined }, viewer, sort },
+      limit,
+      offset
+    );
     sendSuccess(res, { items: rows, pagination: buildPaginationMeta(page, limit, total) });
   } catch (err) {
     next(err);
@@ -106,23 +140,14 @@ export async function listNotes(req: Request, res: Response, next: NextFunction)
 export async function getNote(req: Request, res: Response, next: NextFunction) {
   try {
     const note = await loadNoteOr404(req.params.id);
+    await assertNoteReadable(req.user, note);
 
-    if (note.status !== "approved") {
-      const isOwner = req.user?.id === note.uploader_id;
-      const isPrivileged = !!req.user && isPrivilegedRole(req.user.role);
-
-      if (!isOwner && !isPrivileged) {
-        throw new ApiError(404, "NOT_FOUND", "Note not found");
-      }
-
-      // For privileged roles (non-owner), check scope
-      if (isPrivileged && !isOwner) {
-        const inScope = await isNoteInScope(req.user!, note.id);
-        if (!inScope) throw new ApiError(404, "NOT_FOUND", "Note not found");
-      }
-    }
-
-    sendSuccess(res, note);
+    // Enriched shape: subject, branch, program, stats, tags and this viewer's
+    // own bookmark and rating, all resolved in the one query the projection
+    // already does. The page previously walked the tree in four sequential
+    // round-trips to render its breadcrumb.
+    const card = await notesService.getNoteCard(note.id, req.user?.id ?? null);
+    sendSuccess(res, card ?? note);
   } catch (err) {
     next(err);
   }
@@ -133,6 +158,7 @@ const updateNoteSchema = z.object({
   description: z.string().max(5000).nullable().optional(),
   note_type: noteTypeEnum.optional(),
   exam_year: z.number().int().min(1950).max(2200).nullable().optional(),
+  tags: tagListSchema.optional(),
 });
 
 export async function updateNote(req: Request, res: Response, next: NextFunction) {
@@ -157,9 +183,11 @@ export async function updateNote(req: Request, res: Response, next: NextFunction
       if (!inScope) throw new ApiError(404, "NOT_FOUND", "Note not found");
     }
 
-    const input = updateNoteSchema.parse(req.body);
-    const updated = await notesService.updateNote(note.id, input);
+    const { tags, ...fields } = updateNoteSchema.parse(req.body);
+    const updated = await notesService.updateNote(note.id, fields);
     if (!updated) throw new ApiError(404, "NOT_FOUND", "Note not found");
+    // Omitting tags leaves them alone; sending [] clears them.
+    if (tags) await setNoteTags(note.id, tags);
     sendSuccess(res, updated);
   } catch (err) {
     next(err);
@@ -254,36 +282,56 @@ export async function completeFile(req: Request, res: Response, next: NextFuncti
   }
 }
 
+/**
+ * Resolves the file behind :id/:fileId, having first checked the caller may
+ * see the note at all. Shared by download and preview so the two can never
+ * drift on who is allowed to reach a file.
+ */
+async function loadDeliverableFile(req: Request): Promise<{ note: Note; file: NoteFile }> {
+  const note = await loadNoteOr404(req.params.id);
+  await assertNoteReadable(req.user, note);
+
+  const fileIdResult = idParamSchema.safeParse(req.params.fileId);
+  if (!fileIdResult.success) throw new ApiError(400, "VALIDATION_ERROR", "File id must be a UUID");
+
+  const file: NoteFile | null = await notesService.getFileById(fileIdResult.data);
+  if (!file || file.note_id !== note.id || file.upload_status !== "uploaded") {
+    throw new ApiError(404, "NOT_FOUND", "File not found");
+  }
+  return { note, file };
+}
+
 export async function downloadFile(req: Request, res: Response, next: NextFunction) {
   try {
-    const note = await loadNoteOr404(req.params.id);
-
-    if (note.status !== "approved") {
-      const isOwner = req.user?.id === note.uploader_id;
-      const isPrivileged = !!req.user && isPrivilegedRole(req.user.role);
-
-      if (!isOwner && !isPrivileged) {
-        throw new ApiError(404, "NOT_FOUND", "Note not found");
-      }
-
-      // For privileged roles (non-owner), check scope
-      if (isPrivileged && !isOwner) {
-        const inScope = await isNoteInScope(req.user!, note.id);
-        if (!inScope) throw new ApiError(404, "NOT_FOUND", "Note not found");
-      }
-    }
-
-    const fileIdResult = idParamSchema.safeParse(req.params.fileId);
-    if (!fileIdResult.success) throw new ApiError(400, "VALIDATION_ERROR", "File id must be a UUID");
-
-    const file: NoteFile | null = await notesService.getFileById(fileIdResult.data);
-    if (!file || file.note_id !== note.id || file.upload_status !== "uploaded") {
-      throw new ApiError(404, "NOT_FOUND", "File not found");
-    }
+    const { note, file } = await loadDeliverableFile(req);
 
     const url = await notesService.getDownloadUrl(file.s3_key);
     await notesService.incrementDownloadCount(note.id);
     sendSuccess(res, { url });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * A link for showing a file in the page rather than saving it.
+ *
+ * Deliberately does NOT increment download_count. Opening a note to look at it
+ * is not a download, and counting it as one would inflate the figure shown on
+ * every card and corrupt the most_downloaded sort — a note nobody saves would
+ * outrank one everybody does, purely because it renders in a viewer.
+ */
+export async function previewFile(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { file } = await loadDeliverableFile(req);
+
+    const url = await notesService.getDownloadUrl(file.s3_key);
+    sendSuccess(res, {
+      url,
+      mime_type: file.mime_type,
+      original_filename: file.original_filename,
+      size_bytes: file.size_bytes,
+    });
   } catch (err) {
     next(err);
   }
@@ -315,16 +363,7 @@ export async function reviewNote(req: Request, res: Response, next: NextFunction
 export async function listFiles(req: Request, res: Response, next: NextFunction) {
   try {
     const note = await loadNoteOr404(req.params.id);
-
-    // Same visibility rule as getNote: a non-approved note is visible only to
-    // its uploader or an in-scope admin, and a scope miss reads as 404 so it
-    // cannot be distinguished from a note that does not exist.
-    if (note.status !== "approved") {
-      const isOwner = req.user?.id === note.uploader_id;
-      const isPrivileged = !!req.user && isPrivilegedRole(req.user.role);
-      const inScope = isPrivileged && (await isNoteInScope(req.user!, note.id));
-      if (!isOwner && !inScope) throw new ApiError(404, "NOT_FOUND", "Note not found");
-    }
+    await assertNoteReadable(req.user, note);
 
     const files = await notesService.listNoteFiles(note.id);
     sendSuccess(res, files);

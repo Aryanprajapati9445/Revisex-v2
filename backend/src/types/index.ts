@@ -19,6 +19,11 @@ import type {
   rolePermissions,
   userRoles,
   auditLog,
+  bookmarks,
+  ratings,
+  comments,
+  tags,
+  noteTags,
 } from "../../../db/dist/schema/index.js";
 
 export type UserRole = (typeof userRoleEnum.enumValues)[number];
@@ -36,6 +41,14 @@ export type User = Omit<typeof users.$inferSelect, "password_hash">;
 
 export type Note = typeof notes.$inferSelect;
 export type NoteFile = typeof files.$inferSelect;
+
+// Engagement — the tables the schema has always carried and the API is now
+// finally serving.
+export type Bookmark = typeof bookmarks.$inferSelect;
+export type Rating = typeof ratings.$inferSelect;
+export type Comment = typeof comments.$inferSelect;
+export type Tag = typeof tags.$inferSelect;
+export type NoteTag = typeof noteTags.$inferSelect;
 
 // Admin RBAC — a separate axis from UserRole/Program/Branch scope above.
 export type Permission = typeof permissions.$inferSelect;

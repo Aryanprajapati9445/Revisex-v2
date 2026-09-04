@@ -4,7 +4,7 @@ import { hashPassword } from "../../lib/password.js";
 import { isCheckViolation, isForeignKeyViolation, isUniqueViolation } from "../../lib/pgError.js";
 import type { User, UserRole } from "../../types/index.js";
 
-const USER_COLUMNS = `id, email, full_name, role, program_id, branch_id, enrollment_year, created_at, updated_at`;
+const USER_COLUMNS = `id, email, full_name, role, program_id, branch_id, enrollment_year, current_semester, created_at, updated_at`;
 
 export interface ListUsersOptions {
   role?: UserRole;
@@ -59,7 +59,7 @@ export async function listUsers(
   const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
 
   const { rows } = await pool.query<User>(
-    `SELECT u.id, u.email, u.full_name, u.role, u.program_id, u.branch_id, u.enrollment_year, u.created_at, u.updated_at
+    `SELECT u.id, u.email, u.full_name, u.role, u.program_id, u.branch_id, u.enrollment_year, u.current_semester, u.created_at, u.updated_at
      FROM users u ${where}
      ORDER BY u.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
     [...params, limit, offset]
@@ -77,13 +77,46 @@ export async function getUserById(id: string): Promise<User | null> {
   return rows[0] ?? null;
 }
 
-export async function updateOwnProfile(id: string, fullName: string): Promise<User> {
+export interface OwnProfilePatch {
+  full_name?: string;
+  /** null clears it, so a student can go back to "not set". */
+  current_semester?: number | null;
+}
+
+export async function updateOwnProfile(id: string, patch: OwnProfilePatch): Promise<User> {
+  const sets: string[] = [];
+  const params: unknown[] = [];
+  for (const [key, value] of Object.entries(patch)) {
+    if (value === undefined) continue;
+    params.push(value);
+    sets.push(`${key} = $${params.length}`);
+  }
+  if (sets.length === 0) return (await getUserById(id))!;
+
+  params.push(id);
   const { rows } = await pool.query<User>(
-    `UPDATE users SET full_name = $1 WHERE id = $2 RETURNING ${USER_COLUMNS}`,
-    [fullName, id]
+    `UPDATE users SET ${sets.join(", ")} WHERE id = $${params.length} RETURNING ${USER_COLUMNS}`,
+    params
   );
   // UPDATE ... RETURNING on a valid id always returns exactly one row.
   return rows[0]!;
+}
+
+/**
+ * How many semesters the student's own program runs for — the ceiling on
+ * current_semester. Resolved through the branch, because a student carries
+ * branch_id with program_id null (users_role_scope).
+ */
+export async function getProgramDurationForUser(id: string): Promise<number | null> {
+  const { rows } = await pool.query<{ duration_semesters: number }>(
+    `SELECT p.duration_semesters
+       FROM users u
+       JOIN branches b ON b.id = u.branch_id
+       JOIN programs p ON p.id = b.program_id
+      WHERE u.id = $1`,
+    [id]
+  );
+  return rows[0]?.duration_semesters ?? null;
 }
 
 export interface CreateUserInput {
