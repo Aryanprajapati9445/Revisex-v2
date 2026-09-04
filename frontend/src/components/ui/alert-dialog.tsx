@@ -1,13 +1,22 @@
 import * as React from "react"
 import { AlertDialog as AlertDialogPrimitive } from "radix-ui"
+import { AnimatePresence, motion } from "framer-motion"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { overlayVariants, dialogContentVariants } from "@/components/motion/overlay-variants"
+
+const AlertDialogOpenContext = React.createContext(false)
 
 function AlertDialog({
+  open,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
-  return <AlertDialogPrimitive.Root data-slot="alert-dialog" {...props} />
+  return (
+    <AlertDialogOpenContext.Provider value={!!open}>
+      <AlertDialogPrimitive.Root data-slot="alert-dialog" open={open} {...props} />
+    </AlertDialogOpenContext.Provider>
+  )
 }
 
 function AlertDialogTrigger({
@@ -19,10 +28,14 @@ function AlertDialogTrigger({
 }
 
 function AlertDialogPortal({
+  children,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Portal>) {
+  const open = React.useContext(AlertDialogOpenContext)
   return (
-    <AlertDialogPrimitive.Portal data-slot="alert-dialog-portal" {...props} />
+    <AlertDialogPrimitive.Portal data-slot="alert-dialog-portal" forceMount {...props}>
+      <AnimatePresence>{open && children}</AnimatePresence>
+    </AlertDialogPrimitive.Portal>
   )
 }
 
@@ -31,20 +44,23 @@ function AlertDialogOverlay({
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Overlay>) {
   return (
-    <AlertDialogPrimitive.Overlay
-      data-slot="alert-dialog-overlay"
-      className={cn(
-        "fixed inset-0 z-50 bg-black/40 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
-        className
-      )}
-      {...props}
-    />
+    <AlertDialogPrimitive.Overlay asChild forceMount data-slot="alert-dialog-overlay" {...props}>
+      <motion.div
+        className={cn("fixed inset-0 z-50 bg-black/40", className)}
+        variants={overlayVariants}
+        initial="hidden"
+        animate="visible"
+        exit="hidden"
+        transition={{ duration: 0.15 }}
+      />
+    </AlertDialogPrimitive.Overlay>
   )
 }
 
 function AlertDialogContent({
   className,
   size = "default",
+  children,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content> & {
   size?: "default" | "sm"
@@ -53,14 +69,25 @@ function AlertDialogContent({
     <AlertDialogPortal>
       <AlertDialogOverlay />
       <AlertDialogPrimitive.Content
+        asChild
+        forceMount
         data-slot="alert-dialog-content"
         data-size={size}
-        className={cn(
-          "group/alert-dialog-content fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-panel bg-background p-6 shadow-floating duration-200 data-[size=sm]:max-w-xs data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[size=default]:sm:max-w-sm",
-          className
-        )}
         {...props}
-      />
+      >
+        <motion.div
+          className={cn(
+            "group/alert-dialog-content fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-panel border border-border bg-surface p-6 shadow-floating data-[size=sm]:max-w-xs data-[size=default]:sm:max-w-sm",
+            className
+          )}
+          variants={dialogContentVariants}
+          initial="hidden"
+          animate="visible"
+          exit="hidden"
+        >
+          {children}
+        </motion.div>
+      </AlertDialogPrimitive.Content>
     </AlertDialogPortal>
   )
 }
@@ -105,7 +132,7 @@ function AlertDialogTitle({
     <AlertDialogPrimitive.Title
       data-slot="alert-dialog-title"
       className={cn(
-        "text-base font-medium sm:group-data-[size=default]/alert-dialog-content:group-has-data-[slot=alert-dialog-media]/alert-dialog-content:col-start-2",
+        "text-base font-medium text-text-primary sm:group-data-[size=default]/alert-dialog-content:group-has-data-[slot=alert-dialog-media]/alert-dialog-content:col-start-2",
         className
       )}
       {...props}
