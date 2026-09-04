@@ -3,6 +3,7 @@ import { render, type RenderOptions } from "@testing-library/react";
 import type { ReactElement, ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { AuthProvider } from "@/features/auth/AuthProvider";
+import { ThemeProvider } from "@/app/ThemeProvider";
 
 function makeTestQueryClient() {
   return new QueryClient({
@@ -21,11 +22,13 @@ export function renderWithProviders(
   const queryClient = makeTestQueryClient();
   function Wrapper({ children }: { children: ReactNode }) {
     return (
-      <MemoryRouter initialEntries={[route]}>
-        <QueryClientProvider client={queryClient}>
-          <AuthProvider>{children}</AuthProvider>
-        </QueryClientProvider>
-      </MemoryRouter>
+      <ThemeProvider>
+        <MemoryRouter initialEntries={[route]}>
+          <QueryClientProvider client={queryClient}>
+            <AuthProvider>{children}</AuthProvider>
+          </QueryClientProvider>
+        </MemoryRouter>
+      </ThemeProvider>
     );
   }
   return { queryClient, ...render(ui, { wrapper: Wrapper, ...options }) };
