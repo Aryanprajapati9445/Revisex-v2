@@ -67,8 +67,13 @@ function AlertDialogContent({
 }) {
   return (
     <AlertDialogPortal>
-      <AlertDialogOverlay />
+      {/* Both children are keyed: AnimatePresence tracks its children by key,
+          and two unkeyed siblings collide on the same implicit one — React
+          warns about duplicate keys and neither child's exit animation can be
+          tracked independently. */}
+      <AlertDialogOverlay key="overlay" />
       <AlertDialogPrimitive.Content
+        key="content"
         asChild
         forceMount
         data-slot="alert-dialog-content"

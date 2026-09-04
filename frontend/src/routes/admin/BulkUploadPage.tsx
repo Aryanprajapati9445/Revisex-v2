@@ -207,8 +207,9 @@ export function BulkUploadPage() {
           )}
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <div className="flex flex-col gap-1.5">
-              <span className="text-caption text-text-muted">Type</span>
+            {/* NoteTypeFilter renders its own "Type" label, so this column
+                supplies only the layout. */}
+            <div className="flex flex-col justify-end gap-1.5">
               <NoteTypeFilter value={noteType} onChange={setNoteType} />
             </div>
             <div className="flex flex-col gap-1.5">

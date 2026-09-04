@@ -1,6 +1,7 @@
 import { useBranches, usePrograms } from "@/features/taxonomy/queries";
 import type { UserRole } from "@/lib/api-types";
 import { PICKER_LIMIT } from "@/lib/query-keys";
+import { nativeSelectClass } from "@/components/ui/native-select";
 
 export const DOMAIN_ROLE_LABELS: Record<UserRole, string> = {
   superuser: "Superuser",
@@ -60,9 +61,6 @@ export function isScopeComplete(role: UserRole, programId: string, branchId: str
   return scope === "program" ? programId !== "" : branchId !== "";
 }
 
-const selectClass =
-  "rounded-control bg-surface px-2.5 py-1.5 text-ui text-text-primary outline-none disabled:opacity-50";
-
 /**
  * The program/branch pickers a role needs, and only those. A branch role still
  * shows the program picker because branches are listed per program — it just
@@ -107,7 +105,7 @@ export function RoleScopeFields({
             onProgramChange(event.target.value);
             onBranchChange("");
           }}
-          className={selectClass}
+          className={nativeSelectClass}
         >
           <option value="">Select a program</option>
           {programs.data?.items.map((program) => (
@@ -127,7 +125,7 @@ export function RoleScopeFields({
             value={branchId}
             disabled={programId === ""}
             onChange={(event) => onBranchChange(event.target.value)}
-            className={selectClass}
+            className={nativeSelectClass}
           >
             <option value="">{programId ? "Select a branch" : "Pick a program first"}</option>
             {branches.data?.items.map((branch) => (

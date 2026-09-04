@@ -351,6 +351,7 @@ export function TaxonomyPage() {
   const [editing, setEditing] = useState<PendingEdit>(null);
   const [deleting, setDeleting] = useState<PendingDelete>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionNotice, setActionNotice] = useState<string | null>(null);
 
   const createProgram = useCreateProgram();
   const createBranch = useCreateBranch();
@@ -402,11 +403,23 @@ export function TaxonomyPage() {
   const handleRestore = useCallback(
     (tier: Tier, id: string) => {
       setActionError(null);
+      setActionNotice(null);
       const onError = (error: unknown) =>
         setActionError(error instanceof ApiError ? error.message : "Could not restore that row.");
-      if (tier === "program") updateProgram.mutate({ id, input: { is_active: true } }, { onError });
-      else if (tier === "branch") updateBranch.mutate({ id, input: { is_active: true } }, { onError });
-      else updateSubject.mutate({ id, input: { is_active: true } }, { onError });
+      // Deactivating cascades but restoring does not, deliberately: the tree
+      // has no memory of which children the cascade turned off versus which
+      // were already off, and quietly republishing a branch someone retired
+      // months ago is worse than asking. Say so, or a restored program looks
+      // empty and broken.
+      const onSuccess = () =>
+        setActionNotice(
+          tier === "subject"
+            ? null
+            : `Restored. Its ${tier === "program" ? "branches and subjects" : "subjects"} stay deactivated — turn back on the ones you want from this list.`
+        );
+      if (tier === "program") updateProgram.mutate({ id, input: { is_active: true } }, { onError, onSuccess });
+      else if (tier === "branch") updateBranch.mutate({ id, input: { is_active: true } }, { onError, onSuccess });
+      else updateSubject.mutate({ id, input: { is_active: true } }, { onError, onSuccess });
     },
     [updateProgram, updateBranch, updateSubject]
   );
@@ -513,7 +526,7 @@ export function TaxonomyPage() {
           value={term}
           onChange={setTerm}
           placeholder="Search programs, branches and subjects…"
-          className="max-w-md"
+          className="basis-full sm:max-w-md sm:basis-auto"
         />
         <label className="flex items-center gap-2 text-ui text-text-muted">
           <Checkbox
@@ -527,6 +540,12 @@ export function TaxonomyPage() {
       {actionError && (
         <div role="alert" className="rounded-card bg-status-rejected-bg px-3 py-2 text-ui text-status-rejected-fg">
           {actionError}
+        </div>
+      )}
+
+      {actionNotice && (
+        <div role="status" className="rounded-card bg-accent px-3 py-2 text-ui text-accent-foreground">
+          {actionNotice}
         </div>
       )}
 
@@ -717,7 +736,8 @@ export function TaxonomyPage() {
         description={
           <>
             It leaves browse immediately and everything under it goes with it. Nothing is deleted — the notes stay
-            on the platform and you can restore this later from “Show deactivated”.
+            on the platform, and “Show deactivated” brings this row back. Restoring is one row at a time, though:
+            what goes down together does not come back together.
           </>
         }
         confirmationCode={deleting?.row.code ?? ""}

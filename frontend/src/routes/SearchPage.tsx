@@ -17,8 +17,7 @@ import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import type { Note, NoteType } from "@/lib/api-types";
 import { PICKER_LIMIT } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
-
-const selectClass = "rounded-control bg-surface px-2.5 py-1.5 text-ui text-text-primary outline-none disabled:opacity-50";
+import { nativeSelectClass } from "@/components/ui/native-select";
 
 /**
  * memo: the grid re-renders on every debounced keystroke and every filter
@@ -94,7 +93,10 @@ export function SearchPage() {
 
       <div className="flex flex-col gap-3">
         <div className="flex flex-wrap items-center gap-3">
-          <SearchInput value={term} onChange={setTerm} className="max-w-md" />
+          {/* basis-full first: on a narrow screen the field shares its row with
+              the filters, and SearchInput's flex-1 root would otherwise shrink
+              to a few characters rather than wrap. */}
+          <SearchInput value={term} onChange={setTerm} className="basis-full sm:max-w-md sm:basis-auto" />
           <NoteTypeFilter value={noteType} onChange={(value) => updateParams({ note_type: value })} />
           <Button
             type="button"
@@ -126,7 +128,7 @@ export function SearchPage() {
             <label className="flex flex-col gap-1.5">
               <span className="text-caption text-text-muted">Program</span>
               <select
-                className={selectClass}
+                className={nativeSelectClass}
                 value={programId}
                 onChange={(event) =>
                   updateParams({ program: event.target.value, branch: null, subject: null })
@@ -144,7 +146,7 @@ export function SearchPage() {
             <label className="flex flex-col gap-1.5">
               <span className="text-caption text-text-muted">Branch</span>
               <select
-                className={selectClass}
+                className={nativeSelectClass}
                 disabled={programId === ""}
                 value={branchId}
                 onChange={(event) => updateParams({ branch: event.target.value, subject: null })}
@@ -161,7 +163,7 @@ export function SearchPage() {
             <label className="flex flex-col gap-1.5">
               <span className="text-caption text-text-muted">Subject</span>
               <select
-                className={selectClass}
+                className={nativeSelectClass}
                 disabled={branchId === ""}
                 value={subjectId}
                 onChange={(event) => updateParams({ subject: event.target.value })}

@@ -16,6 +16,7 @@ import { UploadError, uploadNote, type FileUploadState } from "@/features/notes/
 import { ApiError } from "@/lib/api-client";
 import type { NoteType } from "@/lib/api-types";
 import { PICKER_LIMIT, queryKeys } from "@/lib/query-keys";
+import { nativeSelectClass } from "@/components/ui/native-select";
 
 // Mirrors the backend's own limits so a doomed upload is refused before a note
 // row is created: requestFiles accepts at most 10 files, and completeFile
@@ -82,7 +83,6 @@ export function UploadPage() {
 
   // Native <select>, not the shadcn Select: kept for plain, testable
   // keyboard/selectOptions interaction — no listbox behavior is needed here.
-  const selectClass = "rounded-control bg-surface px-2.5 py-1.5 text-ui outline-none";
 
   return (
     <Reveal className="flex max-w-xl flex-col gap-6">
@@ -121,7 +121,7 @@ export function UploadPage() {
 
         <label className="flex flex-col gap-1.5">
           <span className="text-caption text-text-muted">Subject</span>
-          <select required value={subjectId} onChange={(e) => setSubjectId(e.target.value)} className={selectClass}>
+          <select required value={subjectId} onChange={(e) => setSubjectId(e.target.value)} className={nativeSelectClass}>
             <option value="">Select a subject</option>
             {subjects.data?.items.map((subject) => (
               <option key={subject.id} value={subject.id}>

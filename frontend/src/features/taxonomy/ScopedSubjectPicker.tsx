@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useAuth } from "@/features/auth/useAuth";
 import { useBranch, useBranches, usePrograms, useSubjects } from "@/features/taxonomy/queries";
 import { PICKER_LIMIT } from "@/lib/query-keys";
+import { nativeSelectClass } from "@/components/ui/native-select";
 
 export interface SubjectSelection {
   programId: string;
@@ -17,9 +18,6 @@ export const EMPTY_SELECTION: SubjectSelection = {
   semester: "",
   subjectId: "",
 };
-
-const selectClass =
-  "rounded-control bg-surface px-2.5 py-1.5 text-ui text-text-primary outline-none disabled:opacity-50";
 
 /**
  * Walks program -> branch -> semester -> subject, showing only the tiers the
@@ -87,7 +85,7 @@ export function ScopedSubjectPicker({
           <span className="text-caption text-text-muted">Program</span>
           <select
             id={`${idPrefix}-program`}
-            className={selectClass}
+            className={nativeSelectClass}
             value={value.programId}
             onChange={(event) =>
               onChange({ ...EMPTY_SELECTION, programId: event.target.value })
@@ -110,7 +108,7 @@ export function ScopedSubjectPicker({
           <span className="text-caption text-text-muted">Branch</span>
           <select
             id={`${idPrefix}-branch`}
-            className={selectClass}
+            className={nativeSelectClass}
             disabled={effectiveProgramId === ""}
             value={value.branchId}
             onChange={(event) =>
@@ -131,7 +129,7 @@ export function ScopedSubjectPicker({
         <span className="text-caption text-text-muted">Semester</span>
         <select
           id={`${idPrefix}-semester`}
-          className={selectClass}
+          className={nativeSelectClass}
           disabled={effectiveBranchId === ""}
           value={value.semester}
           onChange={(event) => onChange({ ...value, semester: event.target.value, subjectId: "" })}
@@ -150,7 +148,7 @@ export function ScopedSubjectPicker({
           <span className="text-caption text-text-muted">Subject</span>
           <select
             id={`${idPrefix}-subject`}
-            className={selectClass}
+            className={nativeSelectClass}
             disabled={effectiveBranchId === ""}
             value={value.subjectId}
             onChange={(event) => onChange({ ...value, subjectId: event.target.value })}

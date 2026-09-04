@@ -74,7 +74,10 @@ function ProgramRow({ program }: { program: OverviewProgram }) {
           )}
         </button>
 
-        <dl className="flex shrink-0 items-center gap-4 pl-6 font-mono text-caption tabular-nums sm:pl-0">
+        {/* Wraps rather than shrink-0: six metrics on a 390px screen is wider
+            than the viewport, and a non-shrinking row makes the whole page
+            scroll sideways instead of the numbers moving to a second line. */}
+        <dl className="flex flex-wrap items-center gap-x-4 gap-y-1 pl-6 font-mono text-caption tabular-nums sm:pl-0">
           <Metric label="branches" value={program.branch_count} />
           <Metric label="subjects" value={program.subject_count} />
           <Metric label="notes" value={program.note_count} />
@@ -100,7 +103,7 @@ function ProgramRow({ program }: { program: OverviewProgram }) {
                   <span className="shrink-0 text-caption text-status-rejected-fg">deactivated</span>
                 )}
               </span>
-              <dl className="flex shrink-0 items-center gap-4 font-mono text-caption tabular-nums">
+              <dl className="flex flex-wrap items-center gap-x-4 gap-y-1 font-mono text-caption tabular-nums">
                 <Metric label="subjects" value={branch.subject_count} />
                 <Metric label="notes" value={branch.note_count} />
                 <Metric label="pending" value={branch.pending_note_count} warn={branch.pending_note_count > 0} />

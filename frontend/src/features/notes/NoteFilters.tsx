@@ -1,4 +1,5 @@
 import type { NoteType } from "@/lib/api-types";
+import { nativeSelectClass } from "@/components/ui/native-select";
 
 const TYPES: { value: NoteType | ""; label: string }[] = [
   { value: "", label: "All types" },
@@ -23,7 +24,7 @@ export function NoteTypeFilter({
       <select
         value={value}
         onChange={(event) => onChange(event.target.value as NoteType | "")}
-        className="rounded-control bg-surface px-2.5 py-1.5 text-ui outline-none"
+        className={nativeSelectClass}
       >
         {TYPES.map((type) => (
           <option key={type.value} value={type.value}>

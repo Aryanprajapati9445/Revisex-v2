@@ -37,6 +37,7 @@ import { ApiError } from "@/lib/api-client";
 import type { User, UserRole } from "@/lib/api-types";
 import { PICKER_LIMIT } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
+import { nativeSelectClass } from "@/components/ui/native-select";
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/);
@@ -49,8 +50,6 @@ const ROLE_TONE: Record<UserRole, string> = {
   branch_admin: "bg-status-pending-bg text-status-pending-fg",
   student: "bg-background text-text-muted",
 };
-
-const selectClass = "rounded-control bg-surface px-2.5 py-1.5 text-ui text-text-primary outline-none";
 
 function errorMessage(error: unknown, fallback: string): string {
   return error instanceof ApiError ? error.message : fallback;
@@ -175,7 +174,7 @@ function UserDialog({
                   setBranchId("");
                 }
               }}
-              className={selectClass}
+              className={nativeSelectClass}
             >
               {roles.map((option) => (
                 <option key={option} value={option}>
@@ -459,14 +458,17 @@ export function AdminUsersPage() {
           value={term}
           onChange={setTerm}
           placeholder="Search by name or email…"
-          className="max-w-sm"
+          // basis-full, not w-full: SearchInput's root is flex-1, so a width
+          // alone still lets it shrink beside the selects instead of taking
+          // the first line to itself.
+          className="basis-full sm:max-w-sm sm:basis-auto"
         />
         <label className="flex items-center gap-2">
           <span className="text-caption text-text-muted">Role</span>
           <select
             value={roleFilter}
             onChange={(event) => setParam({ role: event.target.value })}
-            className={selectClass}
+            className={nativeSelectClass}
           >
             <option value="">All roles</option>
             {(["superuser", "program_admin", "branch_admin", "student"] as UserRole[]).map((role) => (
@@ -481,7 +483,7 @@ export function AdminUsersPage() {
           <select
             value={programFilter}
             onChange={(event) => setParam({ program: event.target.value })}
-            className={selectClass}
+            className={nativeSelectClass}
           >
             <option value="">All programs</option>
             {programs.data?.items.map((program) => (

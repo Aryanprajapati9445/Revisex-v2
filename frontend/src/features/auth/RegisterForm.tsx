@@ -8,6 +8,7 @@ import { useBranches, usePrograms } from "@/features/taxonomy/queries";
 import { ApiError } from "@/lib/api-client";
 import { PICKER_LIMIT } from "@/lib/query-keys";
 import { useAuth } from "./useAuth";
+import { nativeSelectClass } from "@/components/ui/native-select";
 
 export function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
   const { register } = useAuth();
@@ -50,7 +51,6 @@ export function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
 
   // Native <select>, not the shadcn Select: kept for plain, testable
   // keyboard/selectOptions interaction — no listbox behavior is needed here.
-  const selectClass = "rounded-control bg-surface px-2.5 py-1.5 text-ui outline-none";
 
   return (
     <form onSubmit={handleSubmit} className="flex w-full max-w-sm flex-col gap-4">
@@ -88,7 +88,7 @@ export function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
             setProgramId(e.target.value);
             setBranchId("");
           }}
-          className={selectClass}
+          className={nativeSelectClass}
         >
           <option value="">Select a program</option>
           {programs.data?.items.map((program) => (
@@ -106,7 +106,7 @@ export function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
           value={branchId}
           onChange={(e) => setBranchId(e.target.value)}
           disabled={!programId}
-          className={selectClass}
+          className={nativeSelectClass}
         >
           <option value="">{programId ? "Select a branch" : "Pick a program first"}</option>
           {branches.data?.items.map((branch) => (

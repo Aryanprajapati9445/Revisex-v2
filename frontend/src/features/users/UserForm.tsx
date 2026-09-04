@@ -10,6 +10,7 @@ import { useBranches, usePrograms } from "@/features/taxonomy/queries";
 import type { UserRole } from "@/lib/api-types";
 import { PICKER_LIMIT } from "@/lib/query-keys";
 import type { CreateUserInput } from "./queries";
+import { nativeSelectClass } from "@/components/ui/native-select";
 
 // A branch_admin may only create students; a program_admin may also create
 // branch_admins. The server enforces this — the select just avoids offering
@@ -91,7 +92,6 @@ export function UserForm({
 
   // Native <select>, not the shadcn Select: kept for plain, testable
   // keyboard/selectOptions interaction — no listbox behavior is needed here.
-  const selectClass = "rounded-control bg-surface px-2.5 py-1.5 text-ui outline-none";
   const scopeIsChosen = scope === "program" ? programId !== "" : actorBranchIsFixed || branchId !== "";
 
   return (
@@ -132,7 +132,7 @@ export function UserForm({
                 // The chosen branch may not apply to the new role's scope.
                 if (!actorBranchIsFixed) setBranchId("");
               }}
-              className={selectClass}
+              className={nativeSelectClass}
             >
               {allowedRoles.map((option) => (
                 <option key={option} value={option}>
@@ -152,7 +152,7 @@ export function UserForm({
                   setProgramId(e.target.value);
                   setBranchId("");
                 }}
-                className={selectClass}
+                className={nativeSelectClass}
               >
                 <option value="">Select a program</option>
                 {programs.data?.items.map((program) => (
@@ -172,7 +172,7 @@ export function UserForm({
                 value={branchId}
                 onChange={(e) => setBranchId(e.target.value)}
                 disabled={programId === ""}
-                className={selectClass}
+                className={nativeSelectClass}
               >
                 <option value="">{programId ? "Select a branch" : "Pick a program first"}</option>
                 {branches.data?.items.map((branch) => (
