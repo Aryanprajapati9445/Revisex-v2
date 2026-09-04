@@ -4,6 +4,7 @@ import { HttpResponse, http } from "msw";
 import { beforeEach, describe, expect, it } from "vitest";
 import { API, server } from "@/test/msw";
 import { renderWithProviders } from "@/test/render";
+import { makeNoteCard } from "@/test/fixtures";
 import { MyUploadsPage } from "./MyUploadsPage";
 import { SettingsPage } from "./SettingsPage";
 
@@ -15,6 +16,7 @@ const student = {
   program_id: null,
   branch_id: "b1",
   enrollment_year: null,
+  current_semester: null,
   created_at: "2026-01-01T00:00:00.000Z",
   updated_at: "2026-01-01T00:00:00.000Z",
 };
@@ -45,22 +47,13 @@ describe("MyUploadsPage", () => {
           success: true,
           data: {
             items: [
-              {
-                id: "n1",
-                subject_id: "s1",
-                uploader_id: "u1",
+              makeNoteCard({
                 title: "Draft note",
                 description: null,
-                note_type: "lecture_notes",
-                exam_year: null,
                 status: "pending",
-                reviewed_by: null,
                 reviewed_at: null,
-                rejection_reason: null,
                 download_count: 0,
-                created_at: "2026-01-01T00:00:00.000Z",
-                updated_at: "2026-01-01T00:00:00.000Z",
-              },
+              }),
             ],
             pagination: { page: 1, limit: 20, total: 1, totalPages: 1 },
           },

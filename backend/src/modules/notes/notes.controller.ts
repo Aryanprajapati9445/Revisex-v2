@@ -147,7 +147,13 @@ export async function getNote(req: Request, res: Response, next: NextFunction) {
     // already does. The page previously walked the tree in four sequential
     // round-trips to render its breadcrumb.
     const card = await notesService.getNoteCard(note.id, req.user?.id ?? null);
-    sendSuccess(res, card ?? note);
+    // Not `card ?? note`: falling back to the bare row would answer 200 with a
+    // different shape than the contract promises — no tags, no stats — and the
+    // client reads those unconditionally. The note was just loaded, so a miss
+    // here means the taxonomy joins found nothing, which is a broken row rather
+    // than a missing one.
+    if (!card) throw new ApiError(404, "NOT_FOUND", "Note not found");
+    sendSuccess(res, card);
   } catch (err) {
     next(err);
   }

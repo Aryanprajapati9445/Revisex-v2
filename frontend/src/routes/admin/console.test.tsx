@@ -17,6 +17,7 @@ function makeUser(role: UserRole, overrides: Partial<User> = {}): User {
     program_id: role === "program_admin" ? "p1" : null,
     branch_id: role === "branch_admin" || role === "student" ? "b1" : null,
     enrollment_year: null,
+    current_semester: null,
     created_at: "2026-01-01T00:00:00.000Z",
     updated_at: "2026-01-01T00:00:00.000Z",
     ...overrides,

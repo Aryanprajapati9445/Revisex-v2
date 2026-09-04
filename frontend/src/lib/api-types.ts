@@ -44,6 +44,8 @@ export interface User {
   program_id: string | null;
   branch_id: string | null;
   enrollment_year: number | null;
+  /** Student-declared. Null until they set it — registration never asks. */
+  current_semester: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -63,6 +65,70 @@ export interface Note {
   download_count: number;
   created_at: string;
   updated_at: string;
+}
+
+/**
+ * A note as every listing renders it: the note, where it sits in the tree, how
+ * the community responded, and this viewer's own relationship to it.
+ *
+ * The API returns this shape from the note list, note detail, and saved notes,
+ * so a card never has to fetch its own subject or program to label itself.
+ */
+export interface NoteCard extends Note {
+  subject_name: string;
+  subject_code: string;
+  semester: number;
+  branch_id: string;
+  branch_name: string;
+  program_id: string;
+  program_name: string;
+
+  rating_avg: number;
+  rating_count: number;
+  bookmark_count: number;
+  comment_count: number;
+
+  /** False/null for a signed-out viewer. */
+  viewer_bookmarked: boolean | null;
+  viewer_rating: number | null;
+
+  uploader_name: string | null;
+  tags: string[];
+}
+
+export type NoteSort = "recent" | "top_rated" | "most_downloaded" | "most_saved";
+
+export interface RatingSummary {
+  note_id: string;
+  rating_avg: number;
+  rating_count: number;
+  viewer_rating: number | null;
+}
+
+export interface NoteComment {
+  id: string;
+  note_id: string;
+  user_id: string | null;
+  /** Null when the author's account is gone — the thread outlives them. */
+  author_name: string | null;
+  body: string;
+  created_at: string;
+  updated_at: string;
+  edited: boolean;
+}
+
+export interface Tag {
+  id: string;
+  name: string;
+  note_count: number;
+}
+
+/** A viewable link for a file, plus what it takes to choose a viewer for it. */
+export interface FilePreview {
+  url: string;
+  mime_type: string;
+  original_filename: string;
+  size_bytes: number | null;
 }
 
 export interface NoteFile {

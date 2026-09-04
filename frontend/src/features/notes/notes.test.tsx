@@ -5,25 +5,17 @@ import { describe, expect, it, vi } from "vitest";
 import { Route, Routes } from "react-router-dom";
 import { API, server } from "@/test/msw";
 import { renderWithProviders } from "@/test/render";
+import { makeNoteCard } from "@/test/fixtures";
 import { NoteDetailPage } from "@/routes/NoteDetailPage";
 import { SearchPage } from "@/routes/SearchPage";
 
-const note = {
-  id: "n1",
-  subject_id: "s1",
-  uploader_id: "u1",
-  title: "Unit 1 Notes",
-  description: "Covers the basics",
-  note_type: "lecture_notes" as const,
-  exam_year: null,
-  status: "approved" as const,
-  reviewed_by: null,
-  reviewed_at: "2026-01-02T00:00:00.000Z",
-  rejection_reason: null,
-  download_count: 3,
-  created_at: "2026-01-01T00:00:00.000Z",
-  updated_at: "2026-01-01T00:00:00.000Z",
-};
+const note = makeNoteCard({
+  subject_name: "Operating Systems",
+  subject_code: "CS201",
+  semester: 4,
+  branch_name: "Computer Science",
+  program_name: "B.Tech",
+});
 
 const file = {
   id: "f1",
@@ -41,36 +33,8 @@ const file = {
   created_at: "2026-01-01T00:00:00.000Z",
 };
 
-const subject = {
-  id: "s1",
-  branch_id: "b1",
-  code: "CS201",
-  name: "Operating Systems",
-  semester: 4,
-  is_active: true,
-  created_at: "2026-01-01T00:00:00.000Z",
-  updated_at: "2026-01-01T00:00:00.000Z",
-};
 
-const branch = {
-  id: "b1",
-  program_id: "p1",
-  code: "CSE",
-  name: "Computer Science",
-  is_active: true,
-  created_at: "2026-01-01T00:00:00.000Z",
-  updated_at: "2026-01-01T00:00:00.000Z",
-};
 
-const program = {
-  id: "p1",
-  code: "BTECH",
-  name: "B.Tech",
-  duration_semesters: 8,
-  is_active: true,
-  created_at: "2026-01-01T00:00:00.000Z",
-  updated_at: "2026-01-01T00:00:00.000Z",
-};
 
 function paginated<T>(items: T[]) {
   return {
@@ -148,10 +112,7 @@ describe("NoteDetailPage", () => {
   it("renders the note with its files and download count", async () => {
     server.use(
       http.get(`${API}/api/notes/n1`, () => HttpResponse.json({ success: true, data: note })),
-      http.get(`${API}/api/notes/n1/files`, () => HttpResponse.json({ success: true, data: [file] })),
-      http.get(`${API}/api/subjects/s1`, () => HttpResponse.json({ success: true, data: subject })),
-      http.get(`${API}/api/branches/b1`, () => HttpResponse.json({ success: true, data: branch })),
-      http.get(`${API}/api/programs/p1`, () => HttpResponse.json({ success: true, data: program }))
+      http.get(`${API}/api/notes/n1/files`, () => HttpResponse.json({ success: true, data: [file] }))
     );
 
     renderWithProviders(
@@ -166,13 +127,10 @@ describe("NoteDetailPage", () => {
     expect(screen.getByText(/3 downloads/i)).toBeInTheDocument();
   });
 
-  it("shows the resolved subject/branch/program breadcrumb and note type/exam year", async () => {
+  it("draws the breadcrumb from the note itself, with no follow-up requests", async () => {
     server.use(
       http.get(`${API}/api/notes/n1`, () => HttpResponse.json({ success: true, data: note })),
-      http.get(`${API}/api/notes/n1/files`, () => HttpResponse.json({ success: true, data: [file] })),
-      http.get(`${API}/api/subjects/s1`, () => HttpResponse.json({ success: true, data: subject })),
-      http.get(`${API}/api/branches/b1`, () => HttpResponse.json({ success: true, data: branch })),
-      http.get(`${API}/api/programs/p1`, () => HttpResponse.json({ success: true, data: program }))
+      http.get(`${API}/api/notes/n1/files`, () => HttpResponse.json({ success: true, data: [file] }))
     );
 
     renderWithProviders(
@@ -205,10 +163,7 @@ describe("NoteDetailPage", () => {
       http.get(`${API}/api/notes/n1/files`, () => HttpResponse.json({ success: true, data: [file] })),
       http.get(`${API}/api/notes/n1/files/f1/download`, () =>
         HttpResponse.json({ success: true, data: { url: "https://s3.example/signed" } })
-      ),
-      http.get(`${API}/api/subjects/s1`, () => HttpResponse.json({ success: true, data: subject })),
-      http.get(`${API}/api/branches/b1`, () => HttpResponse.json({ success: true, data: branch })),
-      http.get(`${API}/api/programs/p1`, () => HttpResponse.json({ success: true, data: program }))
+      )
     );
 
     renderWithProviders(

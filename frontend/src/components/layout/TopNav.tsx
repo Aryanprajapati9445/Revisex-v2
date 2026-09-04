@@ -52,6 +52,9 @@ export function TopNav() {
           </NavLink>
           {status === "authenticated" && (
             <>
+              <NavLink to="/saved" className={navClass}>
+                Saved
+              </NavLink>
               <NavLink to="/my-uploads" className={navClass}>
                 My uploads
               </NavLink>

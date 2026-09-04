@@ -14,7 +14,7 @@ import { NoteTypeFilter } from "@/features/notes/NoteFilters";
 import { useNotes } from "@/features/notes/queries";
 import { useBranches, usePrograms, useSubjects } from "@/features/taxonomy/queries";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
-import type { Note, NoteType } from "@/lib/api-types";
+import type { NoteCard as NoteCardData, NoteSort, NoteType } from "@/lib/api-types";
 import { PICKER_LIMIT } from "@/lib/query-keys";
 import { cn } from "@/lib/utils";
 import { nativeSelectClass } from "@/components/ui/native-select";
@@ -24,8 +24,8 @@ import { nativeSelectClass } from "@/components/ui/native-select";
  * change, and a card is a non-trivial subtree. `note` is a stable object from
  * the query cache, so unchanged rows skip re-rendering entirely.
  */
-const MemoNoteCard = memo(function MemoNoteCard({ note }: { note: Note }) {
-  return <NoteCard note={note} />;
+const MemoNoteCard = memo(function MemoNoteCard({ note }: { note: NoteCardData }) {
+  return <NoteCard note={note} showSubject />;
 });
 
 export function SearchPage() {
@@ -37,6 +37,9 @@ export function SearchPage() {
   const programId = searchParams.get("program") ?? "";
   const branchId = searchParams.get("branch") ?? "";
   const subjectId = searchParams.get("subject") ?? "";
+  const tag = searchParams.get("tag") ?? "";
+  const semester = searchParams.get("semester") ?? "";
+  const sort = (searchParams.get("sort") ?? "recent") as NoteSort;
 
   // The field is driven locally and the URL follows once typing settles. Each
   // distinct term is a Postgres full-text query, so writing the param on every
@@ -82,10 +85,17 @@ export function SearchPage() {
     q: q || undefined,
     note_type: noteType || undefined,
     subject_id: subjectId || undefined,
+    // Branch and semester are filters in their own right now, so a subject is
+    // no longer the only way to narrow below a program.
+    branch_id: !subjectId && branchId ? branchId : undefined,
+    semester: semester ? Number(semester) : undefined,
+    tag: tag || undefined,
+    sort,
     page,
   });
 
-  const anyFilter = noteType !== "" || programId !== "" || branchId !== "" || subjectId !== "";
+  const anyFilter =
+    noteType !== "" || programId !== "" || branchId !== "" || subjectId !== "" || tag !== "" || semester !== "";
 
   return (
     <div className="flex flex-col gap-6">
@@ -98,6 +108,19 @@ export function SearchPage() {
               to a few characters rather than wrap. */}
           <SearchInput value={term} onChange={setTerm} className="basis-full sm:max-w-md sm:basis-auto" />
           <NoteTypeFilter value={noteType} onChange={(value) => updateParams({ note_type: value })} />
+          <label className="flex items-center gap-1.5">
+            <span className="text-caption text-text-muted">Sort</span>
+            <select
+              value={sort}
+              onChange={(e) => updateParams({ sort: e.target.value === "recent" ? null : e.target.value })}
+              className={`${nativeSelectClass} w-auto`}
+            >
+              <option value="recent">Newest</option>
+              <option value="top_rated">Top rated</option>
+              <option value="most_downloaded">Most downloaded</option>
+              <option value="most_saved">Most saved</option>
+            </select>
+          </label>
           <Button
             type="button"
             variant={filtersOpen ? "secondary" : "ghost"}
@@ -114,7 +137,14 @@ export function SearchPage() {
               variant="ghost"
               size="sm"
               onClick={() =>
-                updateParams({ note_type: null, program: null, branch: null, subject: null })
+                updateParams({
+                  note_type: null,
+                  program: null,
+                  branch: null,
+                  subject: null,
+                  tag: null,
+                  semester: null,
+                })
               }
             >
               <X className="size-3.5" strokeWidth={2} aria-hidden="true" />
@@ -122,6 +152,23 @@ export function SearchPage() {
             </Button>
           )}
         </div>
+
+        {tag && (
+          <p className="flex flex-wrap items-center gap-2 text-caption text-text-muted">
+            Tagged
+            <span className="inline-flex items-center gap-1 rounded-control bg-accent px-2 py-0.5 text-text-primary">
+              {tag}
+              <button
+                type="button"
+                aria-label={`Remove the ${tag} tag filter`}
+                onClick={() => updateParams({ tag: null })}
+                className="hover:text-status-rejected-fg"
+              >
+                <X className="size-3" strokeWidth={2} aria-hidden="true" />
+              </button>
+            </span>
+          </p>
+        )}
 
         {filtersOpen && (
           <div className="grid grid-cols-1 gap-3 rounded-card bg-surface p-3 sm:grid-cols-3">

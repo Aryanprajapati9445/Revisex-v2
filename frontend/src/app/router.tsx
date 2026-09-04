@@ -17,6 +17,7 @@ import { MyUploadsPage } from "@/routes/MyUploadsPage";
 import { NotFoundPage } from "@/routes/NotFoundPage";
 import { NoteDetailPage } from "@/routes/NoteDetailPage";
 import { RegisterPage } from "@/routes/RegisterPage";
+import { SavedPage } from "@/routes/SavedPage";
 import { SettingsPage } from "@/routes/SettingsPage";
 import { ProgramsPage } from "@/routes/ProgramsPage";
 import { SearchPage } from "@/routes/SearchPage";
@@ -42,6 +43,7 @@ export function AppRoutes() {
           <Route path="home" element={<HomePage />} />
           <Route path="upload" element={<UploadPage />} />
           <Route path="my-uploads" element={<MyUploadsPage />} />
+          <Route path="saved" element={<SavedPage />} />
           <Route path="settings" element={<SettingsPage />} />
 
           {/*

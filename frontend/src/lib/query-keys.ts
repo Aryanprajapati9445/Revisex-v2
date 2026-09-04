@@ -1,4 +1,4 @@
-import type { NoteStatus, NoteType, UserRole } from "./api-types";
+import type { NoteSort, NoteStatus, NoteType, UserRole } from "./api-types";
 
 /** Mirrors the backend's own default page size (lib/pagination.ts). */
 export const DEFAULT_LIMIT = 20;
@@ -11,9 +11,15 @@ export const PICKER_LIMIT = 100;
 
 export interface NoteFilters {
   subject_id?: string;
+  /** Everything in a branch, across its subjects — what a student's home asks for. */
+  branch_id?: string;
+  semester?: number;
   note_type?: NoteType;
   status?: NoteStatus;
+  tag?: string;
+  uploader_id?: string;
   q?: string;
+  sort?: NoteSort;
   page?: number;
   limit?: number;
 }
@@ -70,6 +76,14 @@ export const queryKeys = {
   notes: (filters: NoteFilters) => ["notes", filters] as const,
   note: (id: string) => ["note", id] as const,
   noteFiles: (id: string) => ["note", id, "files"] as const,
+  filePreview: (noteId: string, fileId: string) => ["note", noteId, "files", fileId, "preview"] as const,
+
+  // Engagement. Comments and bookmarks are paginated lists in their own right;
+  // a rating is a per-note summary the note query also carries, so writing one
+  // invalidates both.
+  bookmarks: (page = 1, limit = DEFAULT_LIMIT) => ["bookmarks", page, limit] as const,
+  comments: (noteId: string, page = 1) => ["comments", noteId, page] as const,
+  tags: (q?: string) => ["tags", q ?? null] as const,
 
   users: (filters: UserFilters) => ["users", filters] as const,
 

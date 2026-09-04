@@ -13,6 +13,7 @@ const admin = {
   program_id: null,
   branch_id: "b1",
   enrollment_year: null,
+  current_semester: null,
   created_at: "2026-01-01T00:00:00.000Z",
   updated_at: "2026-01-01T00:00:00.000Z",
 };
@@ -92,12 +93,65 @@ describe("routing", () => {
     expect(screen.queryByRole("link", { name: /^log in$/i })).not.toBeInTheDocument();
   });
 
-  it("sends a signed-in student from the landing page to their home", async () => {
+  it("sends a signed-in student from the landing page to their own course", async () => {
     noPrograms();
-    authenticateAs({ ...admin, id: "u1", role: "student" as never });
+    authenticateAs({ ...admin, id: "u1", full_name: "Diya Nair", role: "student" as never });
+    // The student home reads their branch and semester rather than a generic
+    // programs list, so those are what it asks for on arrival.
+    server.use(
+      http.get(`${API}/api/admin/permissions/me`, () =>
+        HttpResponse.json({ success: true, data: { permissions: [] } })
+      ),
+      http.get(`${API}/api/branches/b1`, () =>
+        HttpResponse.json({
+          success: true,
+          data: {
+            id: "b1",
+            program_id: "p1",
+            code: "CSE",
+            name: "Computer Science",
+            is_active: true,
+            created_at: "2026-01-01T00:00:00.000Z",
+            updated_at: "2026-01-01T00:00:00.000Z",
+          },
+        })
+      ),
+      http.get(`${API}/api/programs/p1`, () =>
+        HttpResponse.json({
+          success: true,
+          data: {
+            id: "p1",
+            code: "BTECH",
+            name: "B.Tech",
+            duration_semesters: 8,
+            is_active: true,
+            created_at: "2026-01-01T00:00:00.000Z",
+            updated_at: "2026-01-01T00:00:00.000Z",
+          },
+        })
+      ),
+      http.get(`${API}/api/subjects`, () =>
+        HttpResponse.json({
+          success: true,
+          data: { items: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 1 } },
+        })
+      ),
+      http.get(`${API}/api/bookmarks`, () =>
+        HttpResponse.json({
+          success: true,
+          data: { items: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 1 } },
+        })
+      ),
+      http.get(`${API}/api/notes`, () =>
+        HttpResponse.json({
+          success: true,
+          data: { items: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 1 } },
+        })
+      )
+    );
     renderWithProviders(<AppRoutes />, { route: "/" });
 
-    expect(await screen.findByRole("heading", { name: /start with a program/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /welcome back, diya/i })).toBeInTheDocument();
   });
 
   it("sends a signed-in administrator to the console instead of the student home", async () => {
