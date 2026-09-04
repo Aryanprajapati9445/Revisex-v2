@@ -21,6 +21,21 @@ class MockIntersectionObserver {
 // @ts-expect-error -- test-only global stub, not a full spec implementation
 global.IntersectionObserver = MockIntersectionObserver;
 
+// jsdom also has no ResizeObserver; cmdk (the CommandPalette) uses one to
+// track list dimensions.
+class MockResizeObserver {
+  observe() {}
+  unobserve() {}
+  disconnect() {}
+}
+
+// @ts-expect-error -- test-only global stub, not a full spec implementation
+global.ResizeObserver = MockResizeObserver;
+
+// jsdom doesn't implement scrollIntoView either, and cmdk calls it when
+// keyboard-navigating the list.
+Element.prototype.scrollIntoView = Element.prototype.scrollIntoView ?? (() => {});
+
 // onUnhandledRequest: "error" makes a forgotten handler a loud test failure
 // rather than a confusing hang.
 beforeAll(() => server.listen({ onUnhandledRequest: "error" }));
