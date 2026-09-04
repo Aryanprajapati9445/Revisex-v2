@@ -1,7 +1,21 @@
+/**
+ * Reads the SQLSTATE off a driver error, following `cause` when it is wrapped.
+ *
+ * Raw `pool.query` rejects with the pg error itself, but Drizzle rejects with a
+ * DrizzleQueryError carrying the pg error as `cause` — so a helper that only
+ * looked at the top-level object classified every Drizzle write failure as
+ * unknown, and a duplicate code surfaced as 500 instead of 409.
+ */
 function pgErrorCode(err: unknown): string | null {
-  if (typeof err === "object" && err !== null && "code" in err) {
-    const code = (err as { code: unknown }).code;
-    return typeof code === "string" ? code : null;
+  // Bounded rather than `while (true)`: a cyclic cause chain would otherwise hang.
+  for (let current = err, depth = 0; depth < 5; depth += 1) {
+    if (typeof current !== "object" || current === null) return null;
+    const code = (current as { code?: unknown }).code;
+    // Drizzle's own wrapper does not set `code`, so a non-string one is skipped
+    // rather than treated as the answer.
+    if (typeof code === "string") return code;
+    if (!("cause" in current)) return null;
+    current = (current as { cause: unknown }).cause;
   }
   return null;
 }

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { ApiError } from "../../lib/apiError.js";
 import { buildPaginationMeta, parsePagination } from "../../lib/pagination.js";
 import { sendSuccess } from "../../lib/response.js";
+import { isInScope, resolveSubjectScope } from "../../lib/taxonomyAccess.js";
 import type { AuthUser } from "../../middleware/auth.js";
 import type { NoteFile } from "../../types/index.js";
 import * as notesService from "./notes.service.js";
@@ -54,6 +55,19 @@ export async function createNote(req: Request, res: Response, next: NextFunction
   try {
     if (!req.user) throw new ApiError(401, "UNAUTHENTICATED", "Authentication required");
     const input = createNoteSchema.parse(req.body);
+
+    // Uploading is scoped the same way reviewing is: a student or branch_admin
+    // may only post into their own branch, a program_admin anywhere in their
+    // program, a superuser anywhere. Without this the subject_id in the body is
+    // an unchecked pointer at any subject on the platform — and the upload form
+    // widening past the uploader's own branch would turn that into a real hole.
+    const subjectScope = await resolveSubjectScope(input.subject_id);
+    if (!subjectScope) {
+      throw new ApiError(422, "VALIDATION_ERROR", "subject_id does not reference an existing subject");
+    }
+    if (!isInScope(req.user, subjectScope)) {
+      throw new ApiError(403, "FORBIDDEN", "That subject is outside the part of the platform you can upload to");
+    }
     const note = await notesService.createNote(req.user.id, {
       subject_id: input.subject_id,
       title: input.title,
