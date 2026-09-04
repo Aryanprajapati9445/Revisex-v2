@@ -141,6 +141,48 @@ props to no-op safely). Two things to verify during implementation:
 
 No visual regression tooling is added; visual QA is manual via dev server.
 
+## New: public landing page
+
+No landing page exists today — `/` renders `HomePage`, which is a
+data-driven browse hub (real programs + approved notes) more suited to an
+authenticated dashboard than a first-impression marketing page. This
+redesign adds one:
+
+- **Route**: `/` becomes a new public `LandingPage`
+  (`frontend/src/routes/LandingPage.tsx`) — first impression of the
+  product, so it gets deliberate motion/design attention, not just token
+  reuse from other pages.
+- **`HomePage` relocates to `/home`**, wrapped in `ProtectedRoute` (the
+  same pattern already used for `/upload`, `/my-uploads`, `/settings`,
+  `/moderate`, `/admin/users`) so navigating there while logged out
+  redirects to `/login` rather than rendering the dashboard. `HomePage`'s
+  internals, data-fetching, and features are unchanged — only its route
+  and auth-gating change.
+- **Post-login/register redirect** target changes from `/` to `/home`.
+- **Other public browse routes are unaffected**: `/browse`,
+  `/programs/:programId`, `/branches/:branchId`, `/subjects/:subjectId`,
+  `/notes/:noteId` stay exactly as they are today (anonymous-accessible),
+  per the original frontend spec's "anonymous browse" scope. Only the
+  root route and the `HomePage` dashboard it used to serve are gated.
+- **Content** (static copy, no data fetching — consistent with "no logic
+  changes" above), top to bottom:
+  1. **Hero** — product name/wordmark, one headline stating what the
+     platform is, one supporting line on who it's for, primary CTA
+     (Register) + secondary CTA (Log in). Animates in on load via the
+     `Reveal` primitive (not scroll-triggered — it's above the fold).
+  2. **Value prop** — a short paragraph on why the product exists
+     (organized, moderated, program → branch → subject structured notes,
+     vs. scattered files/links).
+  3. **Feature highlights** — 3-4 cards (browse by program/branch/
+     subject, search, upload your own notes, moderation-reviewed
+     quality), entering via `Stagger`/`StaggerItem` as they scroll into
+     view.
+  4. **Closing CTA** — repeats Register/Login so a scrolled visitor
+     doesn't have to scroll back to the hero.
+- Uses the same dark-first token system as the rest of the app — it's the
+  front door to the same design system, not a separately-branded
+  marketing page.
+
 ## Open implementation notes (for the plan, not decisions to re-litigate)
 
 - Package additions: `framer-motion`, `cmdk`,
