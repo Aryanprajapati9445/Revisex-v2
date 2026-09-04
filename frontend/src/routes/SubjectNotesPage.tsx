@@ -6,6 +6,7 @@ import { ErrorState } from "@/components/layout/ErrorState";
 import { LoadingState } from "@/components/layout/LoadingState";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Pagination } from "@/components/layout/Pagination";
+import { Stagger, StaggerItem } from "@/components/motion/Stagger";
 import { NoteCard } from "@/features/notes/NoteCard";
 import { NoteTypeFilter } from "@/features/notes/NoteFilters";
 import { useNotes } from "@/features/notes/queries";
@@ -63,11 +64,13 @@ export function SubjectNotesPage() {
         />
       ) : (
         <>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Stagger className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {notes.data.items.map((note) => (
-              <NoteCard key={note.id} note={note} />
+              <StaggerItem key={note.id}>
+                <NoteCard note={note} />
+              </StaggerItem>
             ))}
-          </div>
+          </Stagger>
           <Pagination meta={notes.data.pagination} onPageChange={setPage} />
         </>
       )}

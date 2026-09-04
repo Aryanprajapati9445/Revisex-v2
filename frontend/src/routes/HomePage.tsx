@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { ErrorState } from "@/components/layout/ErrorState";
 import { LoadingState } from "@/components/layout/LoadingState";
+import { Stagger, StaggerItem } from "@/components/motion/Stagger";
 import { useAuth } from "@/features/auth/useAuth";
 import { NoteCard } from "@/features/notes/NoteCard";
 import { useNotes } from "@/features/notes/queries";
@@ -92,17 +93,18 @@ export function HomePage() {
         ) : programs.data.items.length === 0 ? (
           <EmptyState title="No programs yet" hint="An administrator needs to add a program first." />
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Stagger className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {programs.data.items.map((program) => (
-              <TaxonomyCard
-                key={program.id}
-                to={`/programs/${program.id}`}
-                code={program.code}
-                name={program.name}
-                meta={`${program.duration_semesters} semesters`}
-              />
+              <StaggerItem key={program.id}>
+                <TaxonomyCard
+                  to={`/programs/${program.id}`}
+                  code={program.code}
+                  name={program.name}
+                  meta={`${program.duration_semesters} semesters`}
+                />
+              </StaggerItem>
             ))}
-          </div>
+          </Stagger>
         )}
       </section>
 
@@ -118,11 +120,13 @@ export function HomePage() {
             hint="Be the first to upload notes once you're signed in."
           />
         ) : (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <Stagger className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {recentNotes.data.items.map((note) => (
-              <NoteCard key={note.id} note={note} />
+              <StaggerItem key={note.id}>
+                <NoteCard note={note} />
+              </StaggerItem>
             ))}
-          </div>
+          </Stagger>
         )}
       </section>
 
