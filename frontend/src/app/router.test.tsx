@@ -92,12 +92,43 @@ describe("routing", () => {
     expect(screen.queryByRole("link", { name: /^log in$/i })).not.toBeInTheDocument();
   });
 
-  it("sends an authenticated visitor from the landing page to /home", async () => {
+  it("sends a signed-in student from the landing page to their home", async () => {
     noPrograms();
-    authenticateAs(admin);
+    authenticateAs({ ...admin, id: "u1", role: "student" as never });
     renderWithProviders(<AppRoutes />, { route: "/" });
 
     expect(await screen.findByRole("heading", { name: /start with a program/i })).toBeInTheDocument();
+  });
+
+  it("sends a signed-in administrator to the console instead of the student home", async () => {
+    noPrograms();
+    authenticateAs(admin);
+    server.use(
+      http.get(`${API}/api/admin/permissions/me`, () =>
+        HttpResponse.json({ success: true, data: { permissions: [] } })
+      ),
+      http.get(`${API}/api/admin/overview`, () =>
+        HttpResponse.json({
+          success: true,
+          data: {
+            scope: { program_id: null, branch_id: "b1" },
+            totals: {
+              programs: 0, branches: 0, subjects: 0, users: 0, notes: 0,
+              pending_notes: 0, approved_notes: 0, rejected_notes: 0,
+              files: 0, downloads: 0, storage_bytes: 0, uploads_last_7_days: 0,
+            },
+            programs: [],
+            notes_by_type: [],
+            recent_activity: [],
+          },
+        })
+      )
+    );
+    renderWithProviders(<AppRoutes />, { route: "/" });
+
+    // /home is the student home — an admin's home is the console dashboard.
+    expect(await screen.findByRole("heading", { name: /^dashboard$/i })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /start with a program/i })).not.toBeInTheDocument();
   });
 
   it("hides the admin links from a student", async () => {

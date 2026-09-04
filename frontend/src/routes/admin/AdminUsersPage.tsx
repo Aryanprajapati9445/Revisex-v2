@@ -478,21 +478,29 @@ export function AdminUsersPage() {
             ))}
           </select>
         </label>
-        <label className="flex items-center gap-2">
-          <span className="text-caption text-text-muted">Program</span>
-          <select
-            value={programFilter}
-            onChange={(event) => setParam({ program: event.target.value })}
-            className={nativeSelectClass}
-          >
-            <option value="">All programs</option>
-            {programs.data?.items.map((program) => (
-              <option key={program.id} value={program.id}>
-                {program.code}
-              </option>
-            ))}
-          </select>
-        </label>
+        {/*
+          Platform surface only. A scoped admin already sees exactly one
+          program's people, so the control would narrow nothing — and
+          /api/users takes no program_id, which Zod strips silently rather
+          than rejecting, so it would have looked broken instead of absent.
+        */}
+        {manager.scope.kind === "platform" && (
+          <label className="flex items-center gap-2">
+            <span className="text-caption text-text-muted">Program</span>
+            <select
+              value={programFilter}
+              onChange={(event) => setParam({ program: event.target.value })}
+              className={nativeSelectClass}
+            >
+              <option value="">All programs</option>
+              {programs.data?.items.map((program) => (
+                <option key={program.id} value={program.id}>
+                  {program.code}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         {filtersApplied && (
           <Button
             type="button"

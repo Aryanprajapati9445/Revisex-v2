@@ -1,5 +1,6 @@
 import { ArrowRight, LayoutGrid, ShieldCheck, Sparkles, Upload as UploadIcon } from "lucide-react";
-import { Link } from "react-router-dom";
+import { Link, Navigate } from "react-router-dom";
+import { useCapabilities } from "@/features/admin/capabilities";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/layout/EmptyState";
@@ -30,7 +31,27 @@ const FEATURES = [
   },
 ];
 
+/**
+ * An administrator's home is the console, not this page.
+ *
+ * This one is the student home — programs to browse, recently approved notes.
+ * An admin signing in wants the numbers instead: what is pending, what each
+ * program holds, what changed. The console's "Back to the site" goes to
+ * /browse rather than here, so there is no loop.
+ *
+ * Split in two rather than returning early inside StudentHome: the redirect
+ * has to be decided before StudentHome's queries are declared, and a
+ * conditional return above them would change hook order between renders.
+ */
 export function HomePage() {
+  const capabilities = useCapabilities();
+
+  if (capabilities.isLoading) return <LoadingState count={3} />;
+  if (capabilities.isManager) return <Navigate to="/admin" replace />;
+  return <StudentHome />;
+}
+
+function StudentHome() {
   const { status, user } = useAuth();
   const isAuthenticated = status === "authenticated";
 

@@ -292,3 +292,150 @@ describe("bulk upload", () => {
     expect(document.querySelector("#bulk-subject")).not.toBeNull();
   });
 });
+
+describe("the sections inherited by the console", () => {
+  it("renders the review queue, roles and audit log inside the console shell", async () => {
+    server.use(
+      http.get(`${API}/api/notes`, () => HttpResponse.json(page([]))),
+      http.get(`${API}/api/admin/roles`, () => HttpResponse.json({ success: true, data: [] })),
+      http.get(`${API}/api/admin/permissions`, () => HttpResponse.json({ success: true, data: [] })),
+      http.get(`${API}/api/admin/audit-log`, () => HttpResponse.json(page([])))
+    );
+
+    for (const [route, heading] of [
+      ["/admin/moderation", /review queue/i],
+      ["/admin/roles", /roles & permissions/i],
+      ["/admin/audit-log", /audit log/i],
+    ] as const) {
+      signIn(makeUser("superuser"), ["roles.manage", "audit.read"]);
+      const { unmount } = renderWithProviders(<AppRoutes />, { route });
+      // The sidebar proves the page mounted inside the console rather than the
+      // site shell it used to live in.
+      expect(await screen.findByRole("navigation", { name: "Console" })).toBeInTheDocument();
+      expect(await screen.findByRole("heading", { name: heading })).toBeInTheDocument();
+      unmount();
+    }
+  });
+});
+
+describe("accounts on the scoped surface", () => {
+  /** A program_admin holding no console permissions falls back to /api/users. */
+  function signInScoped() {
+    signIn(makeUser("program_admin"), []);
+    server.use(
+      http.get(`${API}/api/admin/users`, () => HttpResponse.json({ success: false }, { status: 403 })),
+      http.get(`${API}/api/users`, () =>
+        HttpResponse.json(
+          page([
+            {
+              id: "u1",
+              email: "diya@test.edu",
+              full_name: "Diya Nair",
+              role: "student",
+              program_id: null,
+              branch_id: "b1",
+              enrollment_year: 2022,
+              created_at: "2026-01-01T00:00:00.000Z",
+              updated_at: "2026-01-01T00:00:00.000Z",
+            },
+          ])
+        )
+      ),
+      http.get(`${API}/api/programs`, () => HttpResponse.json(page([])))
+    );
+  }
+
+  it("lists their own program's people and says so", async () => {
+    signInScoped();
+    renderWithProviders(<AppRoutes />, { route: "/admin/accounts" });
+
+    expect(await screen.findByText("Diya Nair")).toBeInTheDocument();
+    expect(screen.getByText(/inside the program you administer/i)).toBeInTheDocument();
+  });
+
+  it("drops the program filter, which that surface cannot honour", async () => {
+    signInScoped();
+    renderWithProviders(<AppRoutes />, { route: "/admin/accounts" });
+
+    await screen.findByText("Diya Nair");
+    // /api/users takes no program_id — Zod strips it silently, so offering the
+    // control would look broken rather than absent. Role and text remain.
+    expect(screen.queryByRole("combobox", { name: /program/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: /role/i })).toBeInTheDocument();
+  });
+
+  it("shows the backend's own message when a create is refused", async () => {
+    signInScoped();
+    server.use(
+      http.post(`${API}/api/users`, () =>
+        HttpResponse.json(
+          {
+            success: false,
+            error: { code: "FORBIDDEN", message: "You may only create students in your own branch" },
+          },
+          { status: 403 }
+        )
+      ),
+      // The form will not submit until the role's required scope is chosen, so
+      // both pickers need something to choose.
+      http.get(`${API}/api/programs`, () =>
+        HttpResponse.json(
+          page([
+            {
+              id: "p1",
+              code: "BTECH",
+              name: "Bachelor of Technology",
+              duration_semesters: 8,
+              is_active: true,
+              created_at: "2026-01-01T00:00:00.000Z",
+              updated_at: "2026-01-01T00:00:00.000Z",
+            },
+          ])
+        )
+      ),
+      http.get(`${API}/api/branches`, () =>
+        HttpResponse.json(
+          page([
+            {
+              id: "b1",
+              program_id: "p1",
+              code: "CSE",
+              name: "Computer Science",
+              is_active: true,
+              created_at: "2026-01-01T00:00:00.000Z",
+              updated_at: "2026-01-01T00:00:00.000Z",
+            },
+          ])
+        )
+      )
+    );
+    renderWithProviders(<AppRoutes />, { route: "/admin/accounts" });
+
+    await userEvent.click(await screen.findByRole("button", { name: /add user/i }));
+    await userEvent.type(screen.getByLabelText(/full name/i), "New Student");
+    await userEvent.type(screen.getByLabelText(/email/i), "new@test.edu");
+    await userEvent.type(screen.getByLabelText(/password/i), "password123");
+    await userEvent.selectOptions(await screen.findByLabelText(/^program$/i), "p1");
+    await userEvent.selectOptions(await screen.findByLabelText(/^branch$/i), "b1");
+
+    // The scope rules live server-side; the form must relay what it is told
+    // rather than substituting a generic failure.
+    await userEvent.click(screen.getByRole("button", { name: /^create$/i }));
+
+    expect(
+      await screen.findByText(/only create students in your own branch/i)
+    ).toBeInTheDocument();
+  });
+
+  it("offers only roles below the actor's own, which is all that surface accepts", async () => {
+    signInScoped();
+    renderWithProviders(<AppRoutes />, { route: "/admin/accounts" });
+
+    await userEvent.click(await screen.findByRole("button", { name: /add user/i }));
+
+    const roleSelect = await screen.findByLabelText(/domain role/i);
+    const offered = [...roleSelect.querySelectorAll("option")].map((option) => option.value);
+    // /api/users refuses "a role equal to or above your own" with a 403.
+    expect(offered).toEqual(["branch_admin", "student"]);
+  });
+});

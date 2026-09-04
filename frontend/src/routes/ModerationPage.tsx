@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { ErrorState } from "@/components/layout/ErrorState";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { Pagination } from "@/components/layout/Pagination";
 import { Reveal } from "@/components/motion/Reveal";
 import { Button } from "@/components/ui/button";
@@ -21,11 +22,8 @@ export function ModerationPage() {
   const review = useReviewNote(queryKeys.notes(filters));
 
   return (
-    <Reveal className="flex max-w-4xl flex-col gap-6">
-      <div>
-        <h1 className="text-title font-bold">Moderation queue</h1>
-        <p className="mt-1 text-lead text-text-muted">Notes awaiting review in your scope.</p>
-      </div>
+    <Reveal className="flex flex-col gap-6">
+      <PageHeader title="Review queue" description="Notes awaiting a decision in your scope." />
 
       {notes.error ? (
         <ErrorState error={notes.error} />

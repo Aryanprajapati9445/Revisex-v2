@@ -1,21 +1,19 @@
 import { Command } from "cmdk";
 import { AnimatePresence, motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { useMyPermissions } from "@/features/admin/queries";
+import { navGroups } from "@/components/layout/ConsoleSidebar";
+import { useCapabilities } from "@/features/admin/capabilities";
 import { useAuth } from "@/features/auth/useAuth";
 import { useCommandPalette } from "@/hooks/use-command-palette";
 import { overlayVariants, dialogContentVariants } from "@/components/motion/overlay-variants";
-import type { UserRole } from "@/lib/api-types";
-
-const ADMIN_ROLES: UserRole[] = ["superuser", "program_admin", "branch_admin"];
 
 const ITEM_CLASS =
   "cursor-pointer rounded-control px-2 py-2 text-ui text-text-primary data-[selected=true]:bg-accent";
 
 export function CommandPalette() {
   const { open, setOpen } = useCommandPalette();
-  const { status, user } = useAuth();
-  const { data: permissions } = useMyPermissions();
+  const { status } = useAuth();
+  const capabilities = useCapabilities();
   const navigate = useNavigate();
 
   function go(path: string) {
@@ -23,7 +21,11 @@ export function CommandPalette() {
     navigate(path);
   }
 
-  const isAdmin = !!user && ADMIN_ROLES.includes(user.role);
+  // The console's own sections, from the list that builds its sidebar, so the
+  // palette can never offer a section the nav hides or miss one it shows. The
+  // console header calls this "Search the console…" — a promise the palette
+  // could not keep while it listed only site destinations.
+  const consoleSections = navGroups(capabilities, 0).flatMap((group) => group.items);
 
   return (
     <AnimatePresence>
@@ -75,19 +77,27 @@ export function CommandPalette() {
                       <Command.Item onSelect={() => go("/upload")} className={ITEM_CLASS}>
                         Upload a note
                       </Command.Item>
-                      {isAdmin && (
-                        <Command.Item onSelect={() => go("/moderate")} className={ITEM_CLASS}>
-                          Moderation queue
-                        </Command.Item>
-                      )}
-                      {permissions && permissions.size > 0 && (
-                        <Command.Item onSelect={() => go("/admin")} className={ITEM_CLASS}>
-                          Admin
-                        </Command.Item>
-                      )}
                     </>
                   )}
                 </Command.Group>
+
+                {consoleSections.length > 0 && (
+                  <Command.Group
+                    heading="Console"
+                    className="text-caption text-text-muted [&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5"
+                  >
+                    {consoleSections.map((section) => (
+                      <Command.Item
+                        key={section.to}
+                        value={section.label}
+                        onSelect={() => go(section.to)}
+                        className={ITEM_CLASS}
+                      >
+                        {section.label}
+                      </Command.Item>
+                    ))}
+                  </Command.Group>
+                )}
               </Command.List>
             </Command>
           </motion.div>
