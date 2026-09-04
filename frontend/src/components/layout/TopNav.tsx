@@ -1,4 +1,4 @@
-import { LogOut, NotebookPen, Settings, Upload } from "lucide-react";
+import { LogOut, Moon, NotebookPen, Settings, Sun, Upload } from "lucide-react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,6 +11,7 @@ import {
 import { useMyPermissions } from "@/features/admin/queries";
 import { RoleGate } from "@/features/auth/RoleGate";
 import { useAuth } from "@/features/auth/useAuth";
+import { useTheme } from "@/app/ThemeProvider";
 import { cn } from "@/lib/utils";
 
 const ADMIN_ROLES = ["superuser", "program_admin", "branch_admin"] as const;
@@ -27,6 +28,7 @@ export function TopNav() {
   const { user, status, logout } = useAuth();
   const { data: permissions } = useMyPermissions();
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <header className="sticky top-0 z-10 bg-background/90 backdrop-blur">
@@ -68,6 +70,18 @@ export function TopNav() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2">
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={toggleTheme}
+            aria-label={theme === "dark" ? "Switch to light theme" : "Switch to dark theme"}
+          >
+            {theme === "dark" ? (
+              <Sun className="size-3.5" strokeWidth={2} aria-hidden="true" />
+            ) : (
+              <Moon className="size-3.5" strokeWidth={2} aria-hidden="true" />
+            )}
+          </Button>
           {status === "authenticated" ? (
             <>
               <Button asChild size="sm">
