@@ -351,6 +351,55 @@ describe("tags", () => {
   });
 });
 
+describe("file uploads refuse active content", () => {
+  it("rejects a file declared as text/html", async () => {
+    const { uploader, subject } = await setup();
+    const created = await request(app)
+      .post("/api/notes")
+      .set("Authorization", authHeader(uploader))
+      .send({ subject_id: subject.id, title: "Sneaky", note_type: "other" });
+
+    const res = await request(app)
+      .post(`/api/notes/${created.body.data.id}/files`)
+      .set("Authorization", authHeader(uploader))
+      // mime_type is client-supplied and is what storage serves the object back
+      // as, so this would be active content on the storage origin.
+      .send({ files: [{ original_filename: "x.html", mime_type: "text/html" }] });
+
+    expect(res.status).toBe(422);
+  });
+
+  it("rejects svg, which carries script the same way", async () => {
+    const { uploader, subject } = await setup();
+    const created = await request(app)
+      .post("/api/notes")
+      .set("Authorization", authHeader(uploader))
+      .send({ subject_id: subject.id, title: "Sneaky svg", note_type: "other" });
+
+    const res = await request(app)
+      .post(`/api/notes/${created.body.data.id}/files`)
+      .set("Authorization", authHeader(uploader))
+      .send({ files: [{ original_filename: "x.svg", mime_type: "image/svg+xml" }] });
+
+    expect(res.status).toBe(422);
+  });
+
+  it("still accepts an ordinary PDF", async () => {
+    const { uploader, subject } = await setup();
+    const created = await request(app)
+      .post("/api/notes")
+      .set("Authorization", authHeader(uploader))
+      .send({ subject_id: subject.id, title: "Fine", note_type: "other" });
+
+    const res = await request(app)
+      .post(`/api/notes/${created.body.data.id}/files`)
+      .set("Authorization", authHeader(uploader))
+      .send({ files: [{ original_filename: "notes.pdf", mime_type: "application/pdf" }] });
+
+    expect(res.status).toBe(201);
+  });
+});
+
 describe("note listing and detail", () => {
   it("carries stats and taxonomy on every card", async () => {
     const { reader, approved } = await setup();

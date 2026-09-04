@@ -2,7 +2,7 @@ import { AlertCircle, ExternalLink, FileQuestion } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ErrorState } from "@/components/layout/ErrorState";
 import { useFilePreview } from "./queries";
-import { previewKindFor } from "./preview-kind";
+import { previewKindFor, sandboxFor } from "./preview-kind";
 import type { NoteFile } from "@/lib/api-types";
 
 /**
@@ -54,9 +54,10 @@ export function FilePreview({ noteId, file }: { noteId: string; file: NoteFile }
           <iframe
             src={url}
             title={label}
-            // allow-same-origin is deliberately absent: the document is
-            // untrusted user upload and has no business reaching this origin.
-            sandbox=""
+            // Undefined for a PDF, "" for everything else — see sandboxFor.
+            // Chrome will not run its PDF viewer inside any sandboxed frame.
+            sandbox={sandboxFor(kind)}
+            referrerPolicy="no-referrer"
             className="h-[36rem] w-full border-0 bg-white"
           />
         )}

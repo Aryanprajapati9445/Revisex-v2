@@ -28,7 +28,10 @@ export function NoteCard({
   return (
     <Link
       to={`/notes/${note.id}`}
-      className="group flex flex-col gap-2 rounded-card border border-border bg-background p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-floating focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      // h-full so cards in a row end level: the grid stretches its items, but
+      // without this the link inside only grows to its own content and a short
+      // card sits visibly higher than a long one beside it.
+      className="group flex h-full flex-col gap-2 rounded-card border border-border bg-background p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-floating focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
     >
       <div className="flex items-start justify-between gap-2">
         <span className="text-base font-medium text-text-primary">{note.title}</span>

@@ -106,15 +106,53 @@ describe("file preview", () => {
     expect(frame).toHaveAttribute("src", expect.stringContaining("https://storage.example/f1"));
   });
 
-  it("sandboxes the embedded document so an upload cannot reach this origin", async () => {
+  it("leaves the PDF frame unsandboxed, because Chrome will not render one otherwise", async () => {
     signIn();
     serveNote(makeNoteCard());
 
     renderNote();
 
     const frame = await screen.findByTitle(/preview of lecture\.pdf/i);
-    // Empty sandbox: notably without allow-same-origin.
-    expect(frame).toHaveAttribute("sandbox", "");
+    // Verified in a real browser: every sandbox value — including
+    // "allow-same-origin allow-scripts" — leaves a broken-document icon rather
+    // than the PDF. The file is served from the storage origin, so it cannot
+    // reach this origin's storage regardless.
+    expect(frame).not.toHaveAttribute("sandbox");
+    expect(frame).toHaveAttribute("referrerPolicy", "no-referrer");
+  });
+
+  it("does sandbox a text preview, which needs no plugin", async () => {
+    const textFile = { ...pdfFile, id: "f4", original_filename: "syllabus.txt", mime_type: "text/plain" };
+    signIn();
+    serveNote(makeNoteCard(), [textFile]);
+    server.use(
+      http.get(`${API}/api/notes/n1/files/:fileId/preview`, () =>
+        HttpResponse.json({
+          success: true,
+          data: {
+            url: "https://storage.example/f4?sig=abc",
+            mime_type: "text/plain",
+            original_filename: "syllabus.txt",
+            size_bytes: 120,
+          },
+        })
+      )
+    );
+
+    renderNote();
+
+    expect(await screen.findByTitle(/preview of syllabus\.txt/i)).toHaveAttribute("sandbox", "");
+  });
+
+  it("never treats HTML as previewable, so an upload is never framed as a document", async () => {
+    const htmlFile = { ...pdfFile, id: "f5", original_filename: "page.html", mime_type: "text/html" };
+    signIn();
+    serveNote(makeNoteCard(), [htmlFile]);
+
+    renderNote();
+
+    expect(await screen.findByText(/can't be shown here/i)).toBeInTheDocument();
+    expect(screen.queryByTitle(/preview of page\.html/i)).not.toBeInTheDocument();
   });
 
   it("previews through an endpoint that is not the download one", async () => {

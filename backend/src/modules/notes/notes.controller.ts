@@ -226,12 +226,38 @@ export async function deleteNote(req: Request, res: Response, next: NextFunction
 
 export { loadNoteOr404 };
 
+/**
+ * Content types that execute when a browser renders them.
+ *
+ * mime_type is supplied by the client and is what storage will later serve the
+ * object back as, so an uploader could otherwise choose to have their file
+ * returned as text/html — active content on the storage origin, reachable from
+ * the download link and the "open in a new tab" link. Notes are documents;
+ * none of these is a legitimate one.
+ */
+const ACTIVE_CONTENT_TYPES = new Set([
+  "text/html",
+  "application/xhtml+xml",
+  "image/svg+xml",
+  "text/javascript",
+  "application/javascript",
+  "application/x-javascript",
+  "application/xml",
+  "text/xml",
+]);
+
 const requestFilesSchema = z.object({
   files: z
     .array(
       z.object({
         original_filename: z.string().min(1).max(255),
-        mime_type: z.string().min(1).max(120),
+        mime_type: z
+          .string()
+          .min(1)
+          .max(120)
+          .refine((value) => !ACTIVE_CONTENT_TYPES.has(value.split(";")[0]!.trim().toLowerCase()), {
+            message: "that file type cannot be shared as a note",
+          }),
       })
     )
     .min(1)

@@ -32,7 +32,12 @@ export function TopNav() {
 
   return (
     <header className="sticky top-0 z-10 bg-background/90 backdrop-blur">
-      <div className="mx-auto flex max-w-[90rem] items-center gap-6 px-6 py-3 sm:px-8">
+      {/*
+        Wraps rather than clipping: at 390px the logo, the section links and
+        the account cluster do not fit on one line, and without this the sign-up
+        button ran off the right edge of the screen.
+      */}
+      <div className="mx-auto flex max-w-[90rem] flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:gap-x-6 sm:px-8">
         <Link
           to={status === "authenticated" ? "/home" : "/"}
           className="flex items-center gap-2 text-ui font-semibold tracking-tight"
