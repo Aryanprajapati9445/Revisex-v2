@@ -1,4 +1,4 @@
-import { LogOut, Moon, NotebookPen, Settings, Sun, Upload } from "lucide-react";
+import { LayoutDashboard, LogOut, Moon, NotebookPen, Settings, Sun, Upload } from "lucide-react";
 import { Link, NavLink, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -9,7 +9,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useMyPermissions } from "@/features/admin/queries";
-import { RoleGate } from "@/features/auth/RoleGate";
 import { useAuth } from "@/features/auth/useAuth";
 import { useTheme } from "@/app/ThemeProvider";
 import { cn } from "@/lib/utils";
@@ -26,6 +25,7 @@ function navClass({ isActive }: { isActive: boolean }) {
 
 export function TopNav() {
   const { user, status, logout } = useAuth();
+  const isAdmin = !!user && (ADMIN_ROLES as readonly string[]).includes(user.role);
   const { data: permissions } = useMyPermissions();
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
@@ -55,17 +55,18 @@ export function TopNav() {
               <NavLink to="/my-uploads" className={navClass}>
                 My uploads
               </NavLink>
-              <RoleGate allow={[...ADMIN_ROLES]}>
-                <NavLink to="/moderate" className={navClass}>
-                  Moderate
-                </NavLink>
-                <NavLink to="/admin/users" className={navClass}>
-                  Users
-                </NavLink>
-              </RoleGate>
-              {permissions && permissions.size > 0 && (
+              {/*
+                Moderation, users and the admin dashboard used to sit here as
+                three separate links. They are one destination now — the console
+                at /admin, which carries them in its own sidebar — so the site
+                nav keeps a single entry to it.
+              */}
+              {(isAdmin || (permissions && permissions.size > 0)) && (
                 <NavLink to="/admin" className={navClass}>
-                  Admin
+                  <span className="flex items-center gap-1.5">
+                    <LayoutDashboard className="size-3.5" strokeWidth={2} aria-hidden="true" />
+                    Console
+                  </span>
                 </NavLink>
               )}
             </>

@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api-client";
 import type { Note, NoteFile, Paginated } from "@/lib/api-types";
 import { queryKeys, type NoteFilters } from "@/lib/query-keys";
@@ -7,6 +7,10 @@ export function useNotes(filters: NoteFilters) {
   return useQuery({
     queryKey: queryKeys.notes(filters),
     queryFn: () => api.get<Paginated<Note>>("/api/notes", { ...filters }),
+    // Search narrows on every debounced keystroke and every filter change.
+    // Without this the results drop to the pending branch each time and the
+    // grid flashes a skeleton over an answer the user was still reading.
+    placeholderData: keepPreviousData,
   });
 }
 

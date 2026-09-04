@@ -77,16 +77,18 @@ describe("routing", () => {
     const header = await screen.findByRole("banner");
     expect(within(header).getByRole("link", { name: /log in/i })).toBeInTheDocument();
     expect(within(header).getByRole("link", { name: /sign up/i })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /moderate/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /console/i })).not.toBeInTheDocument();
   });
 
-  it("reveals the admin links once an admin is signed in", async () => {
+  it("reveals the console link once an admin is signed in", async () => {
     noPrograms();
     authenticateAs(admin);
     renderWithProviders(<AppRoutes />, { route: "/" });
 
-    expect(await screen.findByRole("link", { name: /moderate/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /users/i })).toBeInTheDocument();
+    // Moderation and user management used to be separate top-nav links; they
+    // are sections of the console now, so the site nav has one entry to it.
+    expect(await screen.findByRole("link", { name: /console/i })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /^moderate$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /^log in$/i })).not.toBeInTheDocument();
   });
 
@@ -106,7 +108,6 @@ describe("routing", () => {
     // My uploads appears for any signed-in user, so it proves the session
     // resolved before we assert the admin links are absent.
     expect(await screen.findByRole("link", { name: /my uploads/i })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /moderate/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /users/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /console/i })).not.toBeInTheDocument();
   });
 });

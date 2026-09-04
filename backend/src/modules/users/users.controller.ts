@@ -45,16 +45,17 @@ export async function updateMe(req: Request, res: Response, next: NextFunction) 
 const listQuerySchema = z.object({
   role: roleEnum.optional(),
   branch_id: z.string().uuid().optional(),
+  q: z.string().trim().min(1).max(120).optional(),
 });
 
 export async function listUsers(req: Request, res: Response, next: NextFunction) {
   try {
     if (!req.user) throw new ApiError(401, "UNAUTHENTICATED", "Authentication required");
 
-    const { role, branch_id } = listQuerySchema.parse(req.query);
+    const { role, branch_id, q } = listQuerySchema.parse(req.query);
     const { page, limit, offset } = parsePagination(req.query);
 
-    const options: usersService.ListUsersOptions = { role, branchId: branch_id };
+    const options: usersService.ListUsersOptions = { role, branchId: branch_id, q };
     if (req.user.role === "branch_admin") {
       options.branchScopeId = req.user.branchId!;
     } else if (req.user.role === "program_admin") {

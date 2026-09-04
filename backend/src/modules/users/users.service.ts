@@ -9,6 +9,10 @@ const USER_COLUMNS = `id, email, full_name, role, program_id, branch_id, enrollm
 export interface ListUsersOptions {
   role?: UserRole;
   branchId?: string;
+  /** Requested filter, distinct from programScopeId below, which is a limit. */
+  programId?: string;
+  /** Free-text over name and email. */
+  q?: string;
   programScopeId?: string; // program_admin's own program — restricts to that program's tree
   branchScopeId?: string; // branch_admin's own branch — restricts to just that branch
 }
@@ -38,6 +42,18 @@ export async function listUsers(
   if (options.branchId) {
     params.push(options.branchId);
     conditions.push(`u.branch_id = $${params.length}`);
+  }
+  if (options.programId) {
+    // A user belongs to a program either directly (a program_admin) or through
+    // their branch (a student, a branch_admin), so both have to be matched.
+    params.push(options.programId);
+    conditions.push(
+      `(u.program_id = $${params.length} OR u.branch_id IN (SELECT id FROM branches WHERE program_id = $${params.length}))`
+    );
+  }
+  if (options.q) {
+    params.push(`%${options.q}%`);
+    conditions.push(`(u.full_name ILIKE $${params.length} OR u.email ILIKE $${params.length})`);
   }
 
   const where = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";

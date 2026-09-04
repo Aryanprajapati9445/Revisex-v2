@@ -4,7 +4,15 @@ import { createApp } from "../../src/app.js";
 import { pool } from "../../src/config/db.js";
 import { signAccessToken } from "../../src/lib/jwt.js";
 import { truncateAll } from "../helpers/db.js";
-import { createBranch, createProgram, createSubject, createUserFixture } from "../helpers/fixtures.js";
+import {
+  assignUserRole,
+  createBranch,
+  createProgram,
+  createRoleFixture,
+  createSubject,
+  createUserFixture,
+  seedPermissionCatalog,
+} from "../helpers/fixtures.js";
 
 const app = createApp();
 
@@ -354,5 +362,64 @@ describe("GET /api/admin/overview", () => {
     const { student } = await buildTree();
     const res = await request(app).get("/api/admin/overview").set("Authorization", authHeader(student));
     expect(res.status).toBe(403);
+  });
+});
+
+describe("account list filters", () => {
+  /** The console filters accounts by role, program and free text. */
+  async function withAccounts() {
+    const tree = await buildTree("PRGA");
+    const other = await buildTree("PRGB");
+    await createUserFixture({ role: "student", branchId: tree.branch.id, email: "grace.hopper@test.edu" });
+    await seedPermissionCatalog();
+    const role = await createRoleFixture(["users.read"]);
+    await assignUserRole(tree.superuser.id, role.id);
+    return { tree, other };
+  }
+
+  it("narrows by role", async () => {
+    const { tree } = await withAccounts();
+    const res = await request(app)
+      .get("/api/admin/users?role=program_admin")
+      .set("Authorization", authHeader(tree.superuser));
+
+    expect(res.status).toBe(200);
+    expect(res.body.data.items.every((u: { role: string }) => u.role === "program_admin")).toBe(true);
+    expect(res.body.data.items).toHaveLength(2);
+  });
+
+  it("narrows by program, reaching people attached through their branch", async () => {
+    const { tree } = await withAccounts();
+    const res = await request(app)
+      .get(`/api/admin/users?program_id=${tree.program.id}`)
+      .set("Authorization", authHeader(tree.superuser));
+
+    const emails = res.body.data.items.map((u: { email: string }) => u.email);
+    // The program_admin holds program_id directly; the branch_admin, the
+    // students and the extra account are reached through the branch.
+    expect(emails).toContain("grace.hopper@test.edu");
+    expect(res.body.data.items).toHaveLength(4);
+  });
+
+  it("matches free text against name and email", async () => {
+    const { tree } = await withAccounts();
+    const res = await request(app)
+      .get("/api/admin/users?q=grace.hopper")
+      .set("Authorization", authHeader(tree.superuser));
+
+    expect(res.body.data.items).toHaveLength(1);
+    expect(res.body.data.items[0].email).toBe("grace.hopper@test.edu");
+  });
+
+  it("keeps a program_admin's own scope on the role-gated /api/users surface", async () => {
+    const { tree } = await withAccounts();
+    const res = await request(app)
+      .get("/api/users?q=grace")
+      .set("Authorization", authHeader(tree.programAdmin));
+
+    // Same filter, but this surface is scoped: it can only ever return people
+    // inside the actor's own program.
+    expect(res.status).toBe(200);
+    expect(res.body.data.items).toHaveLength(1);
   });
 });

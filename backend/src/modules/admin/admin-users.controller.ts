@@ -16,10 +16,24 @@ import * as usersService from "../users/users.service.js";
 const roleEnum = z.enum(["superuser", "program_admin", "branch_admin", "student"]);
 const idParamSchema = z.string().uuid();
 
+// Filters, not scope: a users.read holder reaches every account (see the note
+// above), so these narrow what is shown rather than what is permitted.
+const listQuerySchema = z.object({
+  role: roleEnum.optional(),
+  program_id: z.string().uuid().optional(),
+  branch_id: z.string().uuid().optional(),
+  q: z.string().trim().min(1).max(120).optional(),
+});
+
 export async function listUsers(req: Request, res: Response, next: NextFunction) {
   try {
+    const query = listQuerySchema.parse(req.query);
     const { page, limit, offset } = parsePagination(req.query);
-    const { rows, total } = await usersService.listUsers({}, limit, offset);
+    const { rows, total } = await usersService.listUsers(
+      { role: query.role, programId: query.program_id, branchId: query.branch_id, q: query.q },
+      limit,
+      offset
+    );
     sendSuccess(res, { items: rows, pagination: buildPaginationMeta(page, limit, total) });
   } catch (err) {
     next(err);

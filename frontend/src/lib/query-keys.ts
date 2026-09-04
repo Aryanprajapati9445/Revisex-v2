@@ -21,6 +21,24 @@ export interface NoteFilters {
 export interface UserFilters {
   role?: UserRole;
   branch_id?: string;
+  /** Free-text over name and email, matched client-side within the page. */
+  q?: string;
+  page?: number;
+  limit?: number;
+}
+
+/**
+ * Filters for the administrative taxonomy lists. `include_inactive` and
+ * `with_counts` are the two flags that turn a public browse request into the
+ * manager view, so they belong in the key: the same path with and without them
+ * returns genuinely different rows.
+ */
+export interface TaxonomyFilters {
+  program_id?: string;
+  branch_id?: string;
+  semester?: number;
+  q?: string;
+  include_inactive?: boolean;
   page?: number;
   limit?: number;
 }
@@ -63,4 +81,14 @@ export const queryKeys = {
   userRoles: (userId: string) => ["admin", "users", userId, "roles"] as const,
   adminUsers: (filters: UserFilters) => ["admin", "users", filters] as const,
   auditLog: (filters: AuditLogFilters) => ["admin", "audit-log", filters] as const,
+
+  // Console — the manager view of the same tables the browse keys above read.
+  // Kept under an "admin" prefix so one invalidate after a taxonomy write
+  // refreshes every console list without touching the browse cache, which is
+  // scoped differently and would otherwise refetch for no reason.
+  overview: ["admin", "overview"] as const,
+  adminPrograms: (filters: TaxonomyFilters) => ["admin", "taxonomy", "programs", filters] as const,
+  adminBranches: (filters: TaxonomyFilters) => ["admin", "taxonomy", "branches", filters] as const,
+  adminSubjects: (filters: TaxonomyFilters) => ["admin", "taxonomy", "subjects", filters] as const,
+  adminTaxonomy: ["admin", "taxonomy"] as const,
 } as const;

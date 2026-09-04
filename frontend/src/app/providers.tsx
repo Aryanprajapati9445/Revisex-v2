@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { BrowserRouter } from "react-router-dom";
+import { CommandPaletteProvider } from "@/components/command-palette/CommandPaletteProvider";
 import { AuthProvider } from "@/features/auth/AuthProvider";
 import { ApiError } from "@/lib/api-client";
 import { ThemeProvider } from "@/app/ThemeProvider";
@@ -27,7 +28,9 @@ export function Providers({ children }: { children: ReactNode }) {
     <ThemeProvider>
       <BrowserRouter>
         <QueryClientProvider client={queryClient}>
-          <AuthProvider>{children}</AuthProvider>
+          <AuthProvider>
+            <CommandPaletteProvider>{children}</CommandPaletteProvider>
+          </AuthProvider>
         </QueryClientProvider>
       </BrowserRouter>
     </ThemeProvider>
