@@ -1,6 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { AlertCircle } from "lucide-react";
 import { useState, type FormEvent } from "react";
+import { Reveal } from "@/components/motion/Reveal";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -50,7 +51,7 @@ function SettingsForm({ user }: { user: User }) {
   }
 
   return (
-    <div className="flex max-w-md flex-col gap-6">
+    <Reveal className="flex max-w-md flex-col gap-6">
       <h1 className="text-title font-bold">Account</h1>
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -93,6 +94,6 @@ function SettingsForm({ user }: { user: User }) {
       <p className="text-caption text-text-tertiary">
         Your role and program/branch are set by an administrator and cannot be changed here.
       </p>
-    </div>
+    </Reveal>
   );
 }

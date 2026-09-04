@@ -3,6 +3,7 @@ import { useState } from "react";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { ErrorState } from "@/components/layout/ErrorState";
 import { Pagination } from "@/components/layout/Pagination";
+import { Reveal } from "@/components/motion/Reveal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -289,7 +290,7 @@ function AdminUsersList() {
   if (users.isPending) return <div className="text-text-muted">Loading…</div>;
 
   return (
-    <div className="flex max-w-4xl flex-col gap-6">
+    <Reveal className="flex max-w-4xl flex-col gap-6">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-title font-bold">Users</h1>
@@ -364,7 +365,7 @@ function AdminUsersList() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </Reveal>
   );
 }
 

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { ErrorState } from "@/components/layout/ErrorState";
 import { Pagination } from "@/components/layout/Pagination";
+import { Reveal } from "@/components/motion/Reveal";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,7 +39,7 @@ function AuditLogTable() {
   const log = useAuditLog(filters);
 
   return (
-    <div className="flex flex-col gap-6">
+    <Reveal className="flex flex-col gap-6">
       <div>
         <h1 className="text-title font-bold">Audit Log</h1>
         <p className="mt-1 text-lead text-text-muted">Every write made through the admin area.</p>
@@ -135,7 +136,7 @@ function AuditLogTable() {
           <Pagination meta={log.data.pagination} onPageChange={setPage} />
         </>
       )}
-    </div>
+    </Reveal>
   );
 }
 

@@ -6,6 +6,7 @@ import { ErrorState } from "@/components/layout/ErrorState";
 import { LoadingState } from "@/components/layout/LoadingState";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Pagination } from "@/components/layout/Pagination";
+import { Reveal } from "@/components/motion/Reveal";
 import { TaxonomyCard } from "@/features/taxonomy/TaxonomyCard";
 import { useBranches, useProgram } from "@/features/taxonomy/queries";
 
@@ -20,7 +21,7 @@ export function BranchesPage() {
   if (program.isPending || branches.isPending) return <LoadingState count={6} />;
 
   return (
-    <div className="flex flex-col gap-6">
+    <Reveal className="flex flex-col gap-6">
       <PageHeader
         breadcrumbs={<Breadcrumbs items={[{ label: "Programs", to: "/browse" }, { label: program.data.name }]} />}
         title={program.data.name}
@@ -43,6 +44,6 @@ export function BranchesPage() {
           <Pagination meta={branches.data.pagination} onPageChange={setPage} />
         </>
       )}
-    </div>
+    </Reveal>
   );
 }

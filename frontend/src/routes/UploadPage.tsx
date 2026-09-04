@@ -3,6 +3,7 @@ import { AlertCircle } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { ErrorState } from "@/components/layout/ErrorState";
+import { Reveal } from "@/components/motion/Reveal";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -84,7 +85,7 @@ export function UploadPage() {
   const selectClass = "rounded-control bg-surface px-2.5 py-1.5 text-ui outline-none";
 
   return (
-    <div className="flex max-w-xl flex-col gap-6">
+    <Reveal className="flex max-w-xl flex-col gap-6">
       <div>
         <h1 className="text-title font-bold">Upload notes</h1>
         <p className="mt-1 text-lead text-text-muted">
@@ -183,6 +184,6 @@ export function UploadPage() {
           {pending ? "Uploading…" : "Upload"}
         </Button>
       </form>
-    </div>
+    </Reveal>
   );
 }

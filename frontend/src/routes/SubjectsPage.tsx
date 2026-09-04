@@ -6,6 +6,7 @@ import { ErrorState } from "@/components/layout/ErrorState";
 import { LoadingState } from "@/components/layout/LoadingState";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { Pagination } from "@/components/layout/Pagination";
+import { Reveal } from "@/components/motion/Reveal";
 import { TaxonomyCard } from "@/features/taxonomy/TaxonomyCard";
 import { useBranch, useProgram, useSubjects } from "@/features/taxonomy/queries";
 import { cn } from "@/lib/utils";
@@ -34,7 +35,7 @@ export function SubjectsPage() {
   const semesterCount = program.data?.duration_semesters ?? 8;
 
   return (
-    <div className="flex flex-col gap-6">
+    <Reveal className="flex flex-col gap-6">
       <PageHeader
         breadcrumbs={
           <Breadcrumbs
@@ -91,6 +92,6 @@ export function SubjectsPage() {
           <Pagination meta={subjects.data.pagination} onPageChange={setPage} />
         </>
       )}
-    </div>
+    </Reveal>
   );
 }

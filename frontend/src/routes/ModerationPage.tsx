@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { ErrorState } from "@/components/layout/ErrorState";
 import { Pagination } from "@/components/layout/Pagination";
+import { Reveal } from "@/components/motion/Reveal";
 import { Button } from "@/components/ui/button";
 import { ReviewDialog } from "@/features/moderation/ReviewDialog";
 import { useReviewNote } from "@/features/moderation/queries";
@@ -20,7 +21,7 @@ export function ModerationPage() {
   const review = useReviewNote(queryKeys.notes(filters));
 
   return (
-    <div className="flex max-w-4xl flex-col gap-6">
+    <Reveal className="flex max-w-4xl flex-col gap-6">
       <div>
         <h1 className="text-title font-bold">Moderation queue</h1>
         <p className="mt-1 text-lead text-text-muted">Notes awaiting review in your scope.</p>
@@ -81,6 +82,6 @@ export function ModerationPage() {
           }}
         />
       )}
-    </div>
+    </Reveal>
   );
 }

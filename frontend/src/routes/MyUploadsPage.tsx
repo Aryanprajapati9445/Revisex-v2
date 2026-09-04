@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { ErrorState } from "@/components/layout/ErrorState";
 import { Pagination } from "@/components/layout/Pagination";
+import { Reveal } from "@/components/motion/Reveal";
 import { Button } from "@/components/ui/button";
 import { NoteCard } from "@/features/notes/NoteCard";
 import { useNotes } from "@/features/notes/queries";
@@ -24,7 +25,7 @@ export function MyUploadsPage() {
   const notes = useNotes({ status, page });
 
   return (
-    <div className="flex flex-col gap-6">
+    <Reveal className="flex flex-col gap-6">
       <div className="flex items-center justify-between gap-4">
         <h1 className="text-title font-bold">My uploads</h1>
         <Button asChild>
@@ -69,6 +70,6 @@ export function MyUploadsPage() {
           <Pagination meta={notes.data.pagination} onPageChange={setPage} />
         </>
       )}
-    </div>
+    </Reveal>
   );
 }
