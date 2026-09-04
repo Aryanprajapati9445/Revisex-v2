@@ -6,12 +6,12 @@ export function RegisterPage() {
   const { status } = useAuth();
   const navigate = useNavigate();
 
-  if (status === "authenticated") return <Navigate to="/" replace />;
+  if (status === "authenticated") return <Navigate to="/home" replace />;
 
   return (
     <div className="mx-auto flex max-w-sm flex-col gap-6 py-12">
       <h1 className="text-title font-bold">Create an account</h1>
-      <RegisterForm onSuccess={() => navigate("/", { replace: true })} />
+      <RegisterForm onSuccess={() => navigate("/home", { replace: true })} />
       <p className="text-ui text-text-muted">
         Already have one?{" "}
         <Link to="/login" className="underline">

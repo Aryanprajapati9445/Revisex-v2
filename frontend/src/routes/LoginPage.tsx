@@ -6,7 +6,7 @@ export function LoginPage() {
   const { status } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as { from?: string } | null)?.from ?? "/";
+  const from = (location.state as { from?: string } | null)?.from ?? "/home";
 
   if (status === "authenticated") return <Navigate to={from} replace />;
 

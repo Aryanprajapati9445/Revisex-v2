@@ -7,6 +7,7 @@ import { AuditLogPage } from "@/routes/admin/AuditLogPage";
 import { RolesPage } from "@/routes/admin/RolesPage";
 import { BranchesPage } from "@/routes/BranchesPage";
 import { HomePage } from "@/routes/HomePage";
+import { LandingPage } from "@/routes/LandingPage";
 import { LoginPage } from "@/routes/LoginPage";
 import { ModerationPage } from "@/routes/ModerationPage";
 import { MyUploadsPage } from "@/routes/MyUploadsPage";
@@ -25,7 +26,7 @@ export function AppRoutes() {
   return (
     <Routes>
       <Route element={<AppShell />}>
-        <Route index element={<HomePage />} />
+        <Route index element={<LandingPage />} />
         <Route path="browse" element={<ProgramsPage />} />
         <Route path="programs/:programId" element={<BranchesPage />} />
         <Route path="branches/:branchId" element={<SubjectsPage />} />
@@ -36,6 +37,7 @@ export function AppRoutes() {
         <Route path="register" element={<RegisterPage />} />
 
         <Route element={<ProtectedRoute />}>
+          <Route path="home" element={<HomePage />} />
           <Route path="upload" element={<UploadPage />} />
           <Route path="my-uploads" element={<MyUploadsPage />} />
           <Route path="settings" element={<SettingsPage />} />

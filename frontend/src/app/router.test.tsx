@@ -1,4 +1,4 @@
-import { screen } from "@testing-library/react";
+import { screen, within } from "@testing-library/react";
 import { HttpResponse, http } from "msw";
 import { beforeEach, describe, expect, it } from "vitest";
 import { API, server } from "@/test/msw";
@@ -62,12 +62,21 @@ describe("routing", () => {
     expect(await screen.findByRole("heading", { name: /log in/i })).toBeInTheDocument();
   });
 
+  it("sends an anonymous visitor away from the protected /home dashboard to login", async () => {
+    renderWithProviders(<AppRoutes />, { route: "/home" });
+
+    expect(await screen.findByRole("heading", { name: /log in/i })).toBeInTheDocument();
+  });
+
   it("shows signed-out actions in the nav for an anonymous visitor", async () => {
     noPrograms();
     renderWithProviders(<AppRoutes />, { route: "/" });
 
-    expect(await screen.findByRole("link", { name: /log in/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /sign up/i })).toBeInTheDocument();
+    // The landing page itself also has "Log in" CTAs now, so scope this
+    // assertion to the header (TopNav) rather than the whole document.
+    const header = await screen.findByRole("banner");
+    expect(within(header).getByRole("link", { name: /log in/i })).toBeInTheDocument();
+    expect(within(header).getByRole("link", { name: /sign up/i })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /moderate/i })).not.toBeInTheDocument();
   });
 
@@ -79,6 +88,14 @@ describe("routing", () => {
     expect(await screen.findByRole("link", { name: /moderate/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /users/i })).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /^log in$/i })).not.toBeInTheDocument();
+  });
+
+  it("sends an authenticated visitor from the landing page to /home", async () => {
+    noPrograms();
+    authenticateAs(admin);
+    renderWithProviders(<AppRoutes />, { route: "/" });
+
+    expect(await screen.findByRole("heading", { name: /start with a program/i })).toBeInTheDocument();
   });
 
   it("hides the admin links from a student", async () => {
