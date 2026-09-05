@@ -27,17 +27,17 @@ export function AppRoutes() {
     <Routes>
       <Route element={<AppShell />}>
         <Route index element={<LandingPage />} />
-        <Route path="browse" element={<ProgramsPage />} />
-        <Route path="programs/:programId" element={<BranchesPage />} />
-        <Route path="branches/:branchId" element={<SubjectsPage />} />
-        <Route path="subjects/:subjectId" element={<SubjectNotesPage />} />
-        <Route path="notes/:noteId" element={<NoteDetailPage />} />
-        <Route path="search" element={<SearchPage />} />
         <Route path="login" element={<LoginPage />} />
         <Route path="register" element={<RegisterPage />} />
 
         <Route element={<ProtectedRoute />}>
           <Route path="home" element={<HomePage />} />
+          <Route path="browse" element={<ProgramsPage />} />
+          <Route path="programs/:programId" element={<BranchesPage />} />
+          <Route path="branches/:branchId" element={<SubjectsPage />} />
+          <Route path="subjects/:subjectId" element={<SubjectNotesPage />} />
+          <Route path="notes/:noteId" element={<NoteDetailPage />} />
+          <Route path="search" element={<SearchPage />} />
           <Route path="upload" element={<UploadPage />} />
           <Route path="my-uploads" element={<MyUploadsPage />} />
           <Route path="settings" element={<SettingsPage />} />

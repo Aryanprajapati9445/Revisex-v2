@@ -13,8 +13,9 @@ function navClass({ isActive }: { isActive: boolean }) {
 }
 
 // Anonymous-only chrome now — the signed-in experience lives in
-// DashboardShell's left rail. Two real destinations (Browse, Search) plus
-// auth actions, not the templated 4-6 link AI-nav shape this used to carry.
+// DashboardShell's left rail. Browse/Search require an account (see
+// router.tsx), so there's nothing to link to here — just brand + auth
+// actions, not the templated multi-link AI-nav shape this used to carry.
 export function TopNav() {
   const { status } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -28,15 +29,6 @@ export function TopNav() {
           </span>
           Notes
         </Link>
-
-        <nav className="flex items-center gap-1">
-          <NavLink to="/browse" className={navClass}>
-            Browse
-          </NavLink>
-          <NavLink to="/search" className={navClass}>
-            Search
-          </NavLink>
-        </nav>
 
         <div className="ml-auto flex items-center gap-2">
           <Button

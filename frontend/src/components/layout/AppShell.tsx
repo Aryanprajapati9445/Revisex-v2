@@ -19,18 +19,18 @@ export function AppShell() {
       {status === "authenticated" ? (
         <DashboardShell />
       ) : (
-        <>
+        <div className="flex min-h-screen flex-col">
           <TopNav />
-          <main className="mx-auto max-w-[90rem] px-6 py-8 sm:px-8">
+          <main className="mx-auto w-full max-w-[90rem] flex-1 px-6 py-8 sm:px-8">
             <PageTransition>
               <Outlet />
             </PageTransition>
           </main>
-          <footer className="mx-auto flex max-w-[90rem] flex-wrap items-center justify-between gap-3 border-t border-border px-6 py-6 text-caption text-text-tertiary sm:px-8">
+          <footer className="mx-auto flex w-full max-w-[90rem] flex-wrap items-center justify-between gap-3 border-t border-border px-6 py-6 text-caption text-text-tertiary sm:px-8">
             <span>Notes — a shared library for coursework, built by students.</span>
             <span>&copy; {new Date().getFullYear()}</span>
           </footer>
-        </>
+        </div>
       )}
     </div>
   );
