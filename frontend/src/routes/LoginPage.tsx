@@ -1,4 +1,5 @@
 import { Link, Navigate, useLocation, useNavigate } from "react-router-dom";
+import { GoogleIcon } from "@/components/ui/google-icon";
 import { LoginForm } from "@/features/auth/LoginForm";
 import { useAuth } from "@/features/auth/useAuth";
 import { BASE_URL } from "@/lib/api-client";
@@ -17,8 +18,9 @@ export function LoginPage() {
       <LoginForm onSuccess={() => navigate(from, { replace: true })} />
       <a
         href={`${BASE_URL}/api/auth/google`}
-        className="rounded-control bg-surface px-3 py-2 text-center text-ui outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        className="flex items-center justify-center gap-2 rounded-control bg-surface px-3 py-2 text-ui outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
+        <GoogleIcon className="size-4" />
         Continue with Google
       </a>
       <p className="text-ui text-text-muted">
