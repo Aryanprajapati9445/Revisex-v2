@@ -1,6 +1,7 @@
 /* Hallmark · audit fix pass · macrostructure unchanged (custom/sleek-technical) · theme: existing dark-first indigo, tokens untouched */
 @import "@fontsource-variable/inter";
 @import "@fontsource-variable/jetbrains-mono";
+@import "@fontsource-variable/fraunces";
 @import "tailwindcss";
 
 @theme {
@@ -50,6 +51,7 @@
 
   --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, "SFMono-Regular", monospace;
+  --font-display: "Fraunces Variable", ui-serif, Georgia, serif;
 
   /* Display band — negative tracking scaled to size */
   --text-display: 54px;
@@ -145,6 +147,11 @@
   :focus-visible {
     outline: 2px solid var(--color-primary);
     outline-offset: 2px;
+  }
+
+  .text-display,
+  .text-title {
+    font-family: var(--font-display);
   }
 
   @media (prefers-reduced-motion: reduce) {
