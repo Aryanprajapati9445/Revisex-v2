@@ -86,7 +86,8 @@ function CreateAdminUserForm({ onClose, filters }: { onClose: () => void; filter
 
   // Native <select>, not the shadcn Select: kept consistent with the
   // identical picker in UserForm.tsx, and plain enough not to need one.
-  const selectClass = "rounded-control bg-surface px-2.5 py-1.5 text-ui outline-none";
+  const selectClass =
+    "rounded-control bg-surface px-2.5 py-1.5 text-ui outline-none focus-visible:ring-2 focus-visible:ring-ring";
 
   return (
     <Dialog open onOpenChange={(open) => !open && onClose()}>

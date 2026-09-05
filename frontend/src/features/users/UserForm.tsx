@@ -91,7 +91,8 @@ export function UserForm({
 
   // Native <select>, not the shadcn Select: kept for plain, testable
   // keyboard/selectOptions interaction — no listbox behavior is needed here.
-  const selectClass = "rounded-control bg-surface px-2.5 py-1.5 text-ui outline-none";
+  const selectClass =
+    "rounded-control bg-surface px-2.5 py-1.5 text-ui outline-none focus-visible:ring-2 focus-visible:ring-ring";
   const scopeIsChosen = scope === "program" ? programId !== "" : actorBranchIsFixed || branchId !== "";
 
   return (
