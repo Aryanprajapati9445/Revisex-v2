@@ -1,32 +1,16 @@
-import { ArrowRight, LayoutGrid, ShieldCheck, Upload as UploadIcon } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Link, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Reveal } from "@/components/motion/Reveal";
 import { Parallax } from "@/components/motion/Parallax";
 import { PreviewCard } from "@/components/landing/PreviewCard";
 import { StatsStrip } from "@/components/landing/StatsStrip";
+import { ProblemSection } from "@/components/landing/ProblemSection";
 import { HowItWorks } from "@/components/landing/HowItWorks";
+import { ProductShowcase } from "@/components/landing/ProductShowcase";
+import { Features } from "@/components/landing/Features";
 import { PullQuote } from "@/components/landing/PullQuote";
 import { useAuth } from "@/features/auth/useAuth";
-import { cn } from "@/lib/utils";
-
-const FEATURES = [
-  {
-    icon: LayoutGrid,
-    title: "Browse by course",
-    body: "Program, branch, semester, subject — pick your way down to exactly the notes you need.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Moderated for quality",
-    body: "Every upload is reviewed before it's approved, so what you find has already been checked.",
-  },
-  {
-    icon: UploadIcon,
-    title: "Give back in minutes",
-    body: "Upload your own notes in two steps and they're in front of the next person in your class.",
-  },
-];
 
 export function LandingPage() {
   const { status } = useAuth();
@@ -35,17 +19,19 @@ export function LandingPage() {
 
   return (
     <div className="flex flex-col gap-28 pb-20">
-      <section className="grid items-center gap-12 pt-16 lg:grid-cols-[1.1fr_1fr] lg:gap-8">
-        <div className="flex flex-col items-start gap-6 text-left">
+      <section className="grid min-w-0 grid-cols-1 items-center gap-12 pt-16 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-8">
+        <div className="flex min-w-0 flex-col items-start gap-6 text-left">
           <span className="rounded-control border border-border bg-surface px-2.5 py-1 font-mono text-caption text-text-muted">
-            College notes, organized
+            YOUR CAMPUS NOTE LIBRARY
           </span>
-          <h1 className="max-w-2xl font-mono text-display font-semibold tracking-tight text-text-primary">
-            Find the notes your syllabus already promised you.
+          <h1 className="max-w-2xl text-display font-semibold tracking-tight text-text-primary">
+            Stop searching for notes.
+            <br />
+            Start studying.
           </h1>
           <p className="max-w-lg text-lead text-text-muted">
-            A shared, moderated library of notes organized by program, branch, and subject —
-            browse what your classmates uploaded, or add your own.
+            Find course notes shared by students in your program, branch, and semester —
+            organized, searchable, and reviewed before they reach the library.
           </p>
           <div className="flex flex-wrap items-center gap-3 pt-2">
             <Button asChild size="lg" className="group">
@@ -62,9 +48,12 @@ export function LandingPage() {
               <Link to="/login">Log in</Link>
             </Button>
           </div>
+          <p className="text-caption text-text-tertiary">
+            Free for students · Community-reviewed · Organized by course
+          </p>
         </div>
 
-        <Reveal className="flex justify-center lg:justify-end">
+        <Reveal className="flex min-w-0 justify-center pt-8 pr-6 pl-10 sm:pr-10 lg:justify-end lg:pt-0">
           <Parallax strength={24}>
             <PreviewCard />
           </Parallax>
@@ -73,42 +62,43 @@ export function LandingPage() {
 
       <StatsStrip />
 
-      <div className="flex flex-col gap-10">
+      <ProblemSection />
+
+      <div id="how-it-works" className="flex flex-col gap-10 scroll-mt-20">
         <h2 className="text-title font-semibold tracking-tight text-text-primary">
           How it works
         </h2>
         <HowItWorks />
       </div>
 
-      <div className="flex flex-col divide-y divide-border rounded-panel border border-border bg-surface">
-        {FEATURES.map((feature, index) => (
-          <div
-            key={feature.title}
-            className={cn(
-              "flex flex-col gap-3 p-6 sm:flex-row sm:items-start sm:gap-6",
-              index === 0 && "sm:py-8"
-            )}
-          >
-            <feature.icon
-              className="size-5 shrink-0 text-accent-foreground"
-              strokeWidth={2}
-              aria-hidden="true"
-            />
-            <div className="flex flex-col gap-1.5">
-              <h3 className="text-ui font-semibold text-text-primary">{feature.title}</h3>
-              <p className="max-w-md text-ui text-text-muted">{feature.body}</p>
-            </div>
-          </div>
-        ))}
+      <ProductShowcase />
+
+      <div id="features" className="flex flex-col gap-10 scroll-mt-20">
+        <h2 className="text-title font-semibold tracking-tight text-text-primary">Features</h2>
+        <Features />
       </div>
 
       <PullQuote />
 
       <div className="flex flex-col items-start gap-4 rounded-panel border border-border bg-surface-elevated p-8">
-        <h2 className="text-title font-semibold text-text-primary">Ready to find your notes?</h2>
+        <div className="flex flex-col gap-2">
+          <h2 className="text-title font-semibold text-text-primary">
+            Your next study session starts here.
+          </h2>
+          <p className="max-w-md text-ui text-text-muted">
+            Find the notes your course needs — or upload the ones that helped you.
+          </p>
+        </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Button asChild size="lg">
-            <Link to="/register">Create an account</Link>
+          <Button asChild size="lg" className="group">
+            <Link to="/register">
+              Get started
+              <ArrowRight
+                className="size-4 transition-transform duration-200 group-hover:translate-x-0.5"
+                strokeWidth={2}
+                aria-hidden="true"
+              />
+            </Link>
           </Button>
           <Button asChild size="lg" variant="outline">
             <Link to="/login">Log in</Link>

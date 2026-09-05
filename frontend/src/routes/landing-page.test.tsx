@@ -8,9 +8,12 @@ describe("LandingPage", () => {
     renderWithProviders(<LandingPage />, { route: "/" });
 
     expect(
-      await screen.findByRole("heading", { name: /find the notes your syllabus already promised you/i })
+      await screen.findByRole("heading", { name: /stop searching for notes/i })
     ).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /get started/i })).toHaveAttribute("href", "/register");
+    expect(screen.getAllByRole("link", { name: /get started/i })[0]).toHaveAttribute(
+      "href",
+      "/register"
+    );
     expect(screen.getAllByRole("link", { name: /log in/i })[0]).toHaveAttribute("href", "/login");
   });
 
@@ -18,7 +21,8 @@ describe("LandingPage", () => {
     renderWithProviders(<LandingPage />, { route: "/" });
 
     expect(await screen.findByText("Browse by course")).toBeInTheDocument();
-    expect(screen.getByText("Moderated for quality")).toBeInTheDocument();
-    expect(screen.getByText("Give back in minutes")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Community reviewed" })).toBeInTheDocument();
+    expect(screen.getByText("Search instantly")).toBeInTheDocument();
+    expect(screen.getByText("Give back")).toBeInTheDocument();
   });
 });

@@ -50,6 +50,13 @@ export const queryKeys = {
     ["subjects", branchId, semester ?? null, page, limit] as const,
 
   notes: (filters: NoteFilters) => ["notes", filters] as const,
+
+  // The public landing page reads only counts (pagination.total) off the same
+  // unauthenticated list endpoints the app already exposes — no new backend
+  // route. Kept out of the scoped `programs`/`branches`/`subjects` keys above
+  // since these are unfiltered, limit=1 requests purely for their totals.
+  landingStats: ["landing", "stats"] as const,
+  landingPrograms: (limit: number) => ["landing", "programs", limit] as const,
   note: (id: string) => ["note", id] as const,
   noteFiles: (id: string) => ["note", id, "files"] as const,
 

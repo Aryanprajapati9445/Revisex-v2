@@ -1,80 +1,96 @@
-import { useRef } from "react";
-import { motion, useInView, useScroll, useTransform } from "framer-motion";
-import { cn } from "@/lib/utils";
-import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { BookOpen, ShieldCheck, UploadCloud } from "lucide-react";
+import { Reveal } from "@/components/motion/Reveal";
+import { StatusPill } from "@/components/layout/StatusPill";
 
 const STEPS = [
   {
     number: "01",
-    title: "Find your subject",
-    body: "Pick your program, branch, and semester — narrow straight down to the subject you need.",
+    icon: BookOpen,
+    title: "Choose your course",
+    body: "Select your program, branch, semester, and subject.",
   },
   {
     number: "02",
-    title: "Open what's approved",
-    body: "Every note has already passed moderation, so you can trust what you open.",
+    icon: ShieldCheck,
+    title: "Open trusted notes",
+    body: "Browse notes that have already passed community review.",
   },
   {
     number: "03",
-    title: "Upload your own",
-    body: "Give back in two steps — pick the subject, add your file, and it's in the queue.",
+    icon: UploadCloud,
+    title: "Study or share",
+    body: "Download what you need — or give back by uploading your own.",
   },
-];
+] as const;
 
-function StepRow({ number, title, body }: (typeof STEPS)[number]) {
-  const ref = useRef<HTMLDivElement>(null);
-  const isActive = useInView(ref, { margin: "-40% 0px -40% 0px" });
+function StepVisual({ step }: { step: (typeof STEPS)[number] }) {
+  if (step.number === "01") {
+    return (
+      <div className="flex flex-col gap-1.5 rounded-card border border-border bg-surface p-3">
+        {["B.Tech CSE", "Semester 3", "Data Structures"].map((row) => (
+          <div
+            key={row}
+            className="rounded-control border border-border bg-background px-2.5 py-1.5 text-caption text-text-muted"
+          >
+            {row}
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (step.number === "02") {
+    return (
+      <div className="flex flex-col gap-1.5 rounded-card border border-border bg-surface p-3">
+        <div className="flex items-center justify-between gap-2 rounded-control bg-background px-2.5 py-1.5">
+          <span className="truncate text-caption text-text-primary">Data Structures — Unit 3</span>
+          <StatusPill status="approved" />
+        </div>
+        <div className="flex items-center justify-between gap-2 rounded-control bg-background px-2.5 py-1.5">
+          <span className="truncate text-caption text-text-primary">Operating Systems</span>
+          <StatusPill status="approved" />
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div ref={ref} className="relative flex flex-col gap-1.5 py-5 pl-10">
-      <span
-        className={cn(
-          "absolute left-0 top-5 flex size-6 items-center justify-center rounded-full border font-mono text-caption transition-colors duration-300",
-          isActive
-            ? "border-primary bg-primary text-primary-foreground"
-            : "border-border bg-surface text-text-tertiary"
-        )}
-      >
-        {number.slice(1)}
-      </span>
-      <h3
-        className={cn(
-          "text-ui font-semibold transition-colors duration-300",
-          isActive ? "text-text-primary" : "text-text-muted"
-        )}
-      >
-        {title}
-      </h3>
-      <p className="max-w-sm text-ui text-text-muted">{body}</p>
+    <div className="flex flex-col items-center justify-center gap-2 rounded-card border border-dashed border-border bg-surface p-4">
+      <UploadCloud className="size-5 text-text-tertiary" strokeWidth={2} aria-hidden="true" />
+      <span className="text-caption text-text-muted">Drop a file to upload</span>
     </div>
   );
 }
 
-// A step-by-step scroll sequence rather than a static grid: the rail fills
-// with the page's own scroll position and each step lights up as it passes
-// through the viewport's center — the "how it works" section literally
-// walks the reader through the flow instead of dumping it in three columns.
+// A connected 3-step flow instead of a scroll-driven timeline: each step is
+// its own card carrying a number, an icon, a short line of copy, and a small
+// product visual, joined by a single rule so the sequence still reads left
+// to right on desktop and top to bottom once it stacks on mobile.
 export function HowItWorks() {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const reducedMotion = useReducedMotion();
-  const { scrollYProgress } = useScroll({
-    target: containerRef,
-    offset: ["start 0.75", "end 0.4"],
-  });
-  const lineHeight = useTransform(scrollYProgress, [0, 1], ["0%", "100%"]);
-
   return (
-    <div ref={containerRef} className="relative flex max-w-xl flex-col">
-      <div className="absolute left-3 top-1 bottom-1 w-px -translate-x-1/2 bg-border" aria-hidden="true" />
-      {!reducedMotion && (
-        <motion.div
-          className="absolute left-3 top-1 w-px -translate-x-1/2 bg-primary"
-          style={{ height: lineHeight }}
-          aria-hidden="true"
-        />
-      )}
-      {STEPS.map((step) => (
-        <StepRow key={step.number} {...step} />
+    <div className="relative grid gap-6 sm:grid-cols-3 sm:gap-4">
+      <div
+        className="absolute left-0 right-0 top-9 hidden h-px bg-border sm:block"
+        aria-hidden="true"
+      />
+      {STEPS.map((step, index) => (
+        <Reveal
+          key={step.number}
+          transition={{ duration: 0.4, ease: "easeOut", delay: index * 0.08 }}
+          className="relative flex flex-col gap-4 rounded-panel border border-border bg-surface p-5"
+        >
+          <div className="flex items-center gap-3">
+            <span className="flex size-9 shrink-0 items-center justify-center rounded-control border border-border bg-background font-mono text-caption font-semibold text-text-primary">
+              {step.number}
+            </span>
+            <step.icon className="size-4 text-primary" strokeWidth={2} aria-hidden="true" />
+          </div>
+          <div className="flex flex-col gap-1.5">
+            <h3 className="text-ui font-semibold text-text-primary">{step.title}</h3>
+            <p className="text-ui text-text-muted">{step.body}</p>
+          </div>
+          <StepVisual step={step} />
+        </Reveal>
       ))}
     </div>
   );

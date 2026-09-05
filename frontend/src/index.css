@@ -38,6 +38,10 @@
      now that this is a dark theme (heavy shadows don't read on dark bg). */
   --shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--color-border);
   --shadow-floating: 0 8px 24px rgba(0, 0, 0, 0.5), 0 0 0 1px var(--color-border);
+  /* Reserved for the marketing hero's layered mockup only — the app chrome
+     stays flat. See PreviewCard/HeroMockup. */
+  --shadow-hero: 0 24px 60px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--color-border);
+  --perspective-hero: 1400px;
 
   --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono Variable", ui-monospace, "SFMono-Regular", monospace;
@@ -113,6 +117,7 @@
 
   --shadow-raised: 0 1px 2px rgba(0, 0, 0, 0.06), 0 0 0 1px var(--color-border);
   --shadow-floating: 0 8px 24px rgba(0, 0, 0, 0.1), 0 0 0 1px var(--color-border);
+  --shadow-hero: 0 24px 60px rgba(20, 23, 27, 0.14), 0 0 0 1px var(--color-border);
 }
 
 @layer base {
@@ -120,12 +125,14 @@
     font-family: var(--font-sans);
     background-color: var(--color-background);
     color: var(--color-text-primary);
+    overflow-x: clip;
   }
 
   body {
     margin: 0;
     font-size: var(--text-ui);
     font-weight: 500;
+    overflow-x: clip;
   }
 
   /* Both focus-visible rings and reduced-motion are respected by every

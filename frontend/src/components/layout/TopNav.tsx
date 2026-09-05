@@ -1,5 +1,5 @@
 import { Moon, NotebookPen, Sun } from "lucide-react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/features/auth/useAuth";
 import { useTheme } from "@/app/ThemeProvider";
@@ -7,18 +7,21 @@ import { cn } from "@/lib/utils";
 
 function navClass({ isActive }: { isActive: boolean }) {
   return cn(
-    "rounded-control px-2.5 py-1.5 text-ui transition-colors duration-150",
+    "rounded-control px-2.5 py-1.5 text-ui whitespace-nowrap transition-colors duration-150",
     isActive ? "bg-surface text-text-primary" : "text-text-muted hover:bg-surface"
   );
 }
 
 // Anonymous-only chrome now — the signed-in experience lives in
 // DashboardShell's left rail. Browse/Search require an account (see
-// router.tsx), so there's nothing to link to here — just brand + auth
-// actions, not the templated multi-link AI-nav shape this used to carry.
+// router.tsx), so the only links here are brand, in-page anchors to the
+// landing page's own sections (only rendered on "/"), and auth actions —
+// not the templated multi-link AI-nav shape this used to carry.
 export function TopNav() {
   const { status } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { pathname } = useLocation();
+  const isLanding = pathname === "/";
 
   return (
     <header className="sticky top-0 z-10 bg-background/90 backdrop-blur">
@@ -29,6 +32,23 @@ export function TopNav() {
           </span>
           Notes
         </Link>
+
+        {isLanding && (
+          <nav className="hidden items-center gap-1 sm:flex">
+            <a
+              href="#how-it-works"
+              className="rounded-control px-2.5 py-1.5 text-ui text-text-muted transition-colors duration-150 hover:bg-surface hover:text-text-primary"
+            >
+              How it works
+            </a>
+            <a
+              href="#features"
+              className="rounded-control px-2.5 py-1.5 text-ui text-text-muted transition-colors duration-150 hover:bg-surface hover:text-text-primary"
+            >
+              Features
+            </a>
+          </nav>
+        )}
 
         <div className="ml-auto flex items-center gap-2">
           <Button
