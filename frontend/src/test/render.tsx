@@ -4,6 +4,7 @@ import type { ReactElement, ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { AuthProvider } from "@/features/auth/AuthProvider";
 import { ThemeProvider } from "@/app/ThemeProvider";
+import { CommandPaletteProvider } from "@/hooks/use-command-palette";
 
 function makeTestQueryClient() {
   return new QueryClient({
@@ -25,7 +26,9 @@ export function renderWithProviders(
       <ThemeProvider>
         <MemoryRouter initialEntries={[route]}>
           <QueryClientProvider client={queryClient}>
-            <AuthProvider>{children}</AuthProvider>
+            <AuthProvider>
+              <CommandPaletteProvider>{children}</CommandPaletteProvider>
+            </AuthProvider>
           </QueryClientProvider>
         </MemoryRouter>
       </ThemeProvider>
