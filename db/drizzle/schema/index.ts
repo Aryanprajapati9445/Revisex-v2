@@ -4,6 +4,8 @@ export * from "./programs.js";
 export * from "./branches.js";
 export * from "./subjects.js";
 export * from "./users.js";
+export * from "./email-otps.js";
+export * from "./password-reset-tokens.js";
 export * from "./notes.js";
 export * from "./files.js";
 export * from "./tags.js";

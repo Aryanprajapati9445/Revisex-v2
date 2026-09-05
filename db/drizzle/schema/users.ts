@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { check, index, pgTable, smallint, text, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
+import { boolean, check, index, pgTable, smallint, text, timestamp, uniqueIndex, uuid, varchar } from "drizzle-orm/pg-core";
 import { branches } from "./branches.js";
 import { citext } from "./custom-types.js";
 import { userRoleEnum } from "./enums.js";
@@ -23,6 +23,8 @@ export const users = pgTable(
     password_hash: text("password_hash"),
     auth_provider: varchar("auth_provider", { length: 30 }),
     provider_user_id: text("provider_user_id"),
+
+    email_verified: boolean("email_verified").notNull().default(false),
 
     role: userRoleEnum("role").notNull().default("student"),
     program_id: uuid("program_id").references(() => programs.id, { onDelete: "restrict" }),

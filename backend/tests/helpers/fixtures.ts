@@ -55,6 +55,7 @@ export interface CreateUserOptions {
   branchId?: string | null;
   password?: string;
   email?: string;
+  emailVerified?: boolean;
 }
 
 export async function createUserFixture(options: CreateUserOptions) {
@@ -62,9 +63,17 @@ export async function createUserFixture(options: CreateUserOptions) {
   const password = options.password ?? "password123";
   const passwordHash = await bcrypt.hash(password, FIXTURE_SALT_ROUNDS);
   const { rows } = await pool.query(
-    `INSERT INTO users (email, full_name, password_hash, role, program_id, branch_id)
-     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-    [email, "Test User", passwordHash, options.role, options.programId ?? null, options.branchId ?? null]
+    `INSERT INTO users (email, full_name, password_hash, role, program_id, branch_id, email_verified)
+     VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+    [
+      email,
+      "Test User",
+      passwordHash,
+      options.role,
+      options.programId ?? null,
+      options.branchId ?? null,
+      options.emailVerified ?? true,
+    ]
   );
   return { user: rows[0], password };
 }
