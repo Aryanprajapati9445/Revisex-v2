@@ -3,6 +3,7 @@ import { useState, type FormEvent } from "react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import { ApiError } from "@/lib/api-client";
 import { useAuth } from "./useAuth";
@@ -43,9 +44,8 @@ export function LoginForm({ onSuccess }: { onSuccess?: () => void }) {
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="login-password">Password</Label>
-        <Input
+        <PasswordInput
           id="login-password"
-          type="password"
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
