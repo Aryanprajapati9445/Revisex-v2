@@ -2,6 +2,7 @@ import { ArrowRight, LayoutGrid, ShieldCheck, Upload as UploadIcon } from "lucid
 import { Link, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Reveal } from "@/components/motion/Reveal";
+import { Parallax } from "@/components/motion/Parallax";
 import { PreviewCard } from "@/components/landing/PreviewCard";
 import { StatsStrip } from "@/components/landing/StatsStrip";
 import { HowItWorks } from "@/components/landing/HowItWorks";
@@ -64,7 +65,9 @@ export function LandingPage() {
         </div>
 
         <Reveal className="flex justify-center lg:justify-end">
-          <PreviewCard />
+          <Parallax strength={24}>
+            <PreviewCard />
+          </Parallax>
         </Reveal>
       </section>
 
