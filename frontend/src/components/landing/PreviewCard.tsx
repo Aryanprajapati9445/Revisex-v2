@@ -1,6 +1,7 @@
 import { FileText, Search } from "lucide-react";
 import { StatusPill } from "@/components/layout/StatusPill";
 import { useLandingStats } from "@/features/landing/queries";
+import { Tilt } from "@/components/motion/Tilt";
 
 const ROWS = [
   { subject: "Data Structures", program: "B.Tech CSE · Semester 3", status: "approved" as const },
@@ -17,15 +18,8 @@ export function PreviewCard() {
   const { data: stats } = useLandingStats();
 
   return (
-    <div
-      className="relative my-8 w-full max-w-sm sm:my-10"
-      style={{ perspective: "var(--perspective-hero)" }}
-      aria-hidden="true"
-    >
-      <div
-        className="rounded-panel border border-border bg-surface shadow-hero"
-        style={{ transform: "rotateY(-5deg) rotateX(1.5deg)" }}
-      >
+    <Tilt strength={6} className="relative my-8 w-full max-w-sm sm:my-10" aria-hidden="true">
+      <div className="rounded-panel border border-border bg-surface shadow-hero">
         <div className="flex items-center gap-2 border-b border-border px-4 py-3">
           <span className="text-ui font-semibold text-text-primary">Notes</span>
         </div>
@@ -71,6 +65,6 @@ export function PreviewCard() {
       >
         <p className="text-caption font-medium text-text-primary">Semester 3</p>
       </div>
-    </div>
+    </Tilt>
   );
 }

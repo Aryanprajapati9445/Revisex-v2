@@ -11,6 +11,7 @@ import { ProductShowcase } from "@/components/landing/ProductShowcase";
 import { Features } from "@/components/landing/Features";
 import { PullQuote } from "@/components/landing/PullQuote";
 import { CursorGlow } from "@/components/landing/CursorGlow";
+import { Tilt } from "@/components/motion/Tilt";
 import { useAuth } from "@/features/auth/useAuth";
 
 export function LandingPage() {
@@ -35,16 +36,18 @@ export function LandingPage() {
             organized, searchable, and reviewed before they reach the library.
           </p>
           <div className="flex flex-wrap items-center gap-3 pt-2">
-            <Button asChild size="lg" className="group">
-              <Link to="/register">
-                Get started
-                <ArrowRight
-                  className="size-4 transition-transform duration-200 group-hover:translate-x-0.5"
-                  strokeWidth={2}
-                  aria-hidden="true"
-                />
-              </Link>
-            </Button>
+            <Tilt strength={4} className="inline-block">
+              <Button asChild size="lg" className="group">
+                <Link to="/register">
+                  Get started
+                  <ArrowRight
+                    className="size-4 transition-transform duration-200 group-hover:translate-x-0.5"
+                    strokeWidth={2}
+                    aria-hidden="true"
+                  />
+                </Link>
+              </Button>
+            </Tilt>
             <Button asChild size="lg" variant="outline">
               <Link to="/login">Log in</Link>
             </Button>
@@ -91,16 +94,18 @@ export function LandingPage() {
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          <Button asChild size="lg" className="group">
-            <Link to="/register">
-              Get started
-              <ArrowRight
-                className="size-4 transition-transform duration-200 group-hover:translate-x-0.5"
-                strokeWidth={2}
-                aria-hidden="true"
-              />
-            </Link>
-          </Button>
+          <Tilt strength={4} className="inline-block">
+            <Button asChild size="lg" className="group">
+              <Link to="/register">
+                Get started
+                <ArrowRight
+                  className="size-4 transition-transform duration-200 group-hover:translate-x-0.5"
+                  strokeWidth={2}
+                  aria-hidden="true"
+                />
+              </Link>
+            </Button>
+          </Tilt>
           <Button asChild size="lg" variant="outline">
             <Link to="/login">Log in</Link>
           </Button>
