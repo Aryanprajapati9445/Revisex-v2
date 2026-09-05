@@ -4,29 +4,31 @@
 @import "tailwindcss";
 
 @theme {
-  /* Surfaces — dark-first, sleek/technical neutral scale */
-  --color-background: #0b0d10;
-  --color-surface: #14171b;
-  --color-surface-elevated: #1b1f24;
-  --color-border: #262b31;
+  /* Surfaces — dark-first, "Ink & Amber" warm neutral scale */
+  --color-background: #0e0c0a;
+  --color-surface: #17140f;
+  --color-surface-elevated: #1f1a14;
+  --color-border: #2b241c;
 
   /* Text */
-  --color-text-primary: #e8eaed;
-  --color-text-muted: #9aa1ac;
-  --color-text-tertiary: #6b7280;
+  --color-text-primary: #f0ead9;
+  --color-text-muted: #a89a86;
+  --color-text-tertiary: #746a5b;
 
   /* Brand — the ONE accent, interactive states only. */
-  --color-primary: #6e56cf;
-  --color-primary-foreground: #ffffff;
-  --color-accent: #23273a;
-  --color-accent-foreground: #a996f0;
+  --color-primary: #d9a441;
+  --color-primary-foreground: #1f1508;
+  --color-accent: #2b2210;
+  --color-accent-foreground: #e6b64f;
 
-  /* Status pills — retoned to sit on the dark surface above. */
-  --color-status-pending-bg: #33291a;
-  --color-status-pending-fg: #e9b949;
-  --color-status-approved-bg: #163024;
+  /* Status pills — retoned to sit on the warm dark surface above.
+     `pending` is shifted off gold so it doesn't read as the same color
+     as the new primary accent. */
+  --color-status-pending-bg: #33230f;
+  --color-status-pending-fg: #e08a3c;
+  --color-status-approved-bg: #16241c;
   --color-status-approved-fg: #4ade80;
-  --color-status-rejected-bg: #331e1e;
+  --color-status-rejected-bg: #33201e;
   --color-status-rejected-fg: #f87171;
 
   /* Radius — sharper nesting rule: 8 outer -> 6 default -> 4 inner */
