@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils"
 const buttonVariants = cva(
   // rounded-full (not rounded-md): every CTA in this design is a pill —
   // radius-control/-card are reserved for cards and inputs, per the
-  // "nesting rule: 12 outer -> 8 default -> 4 inner" in index.css.
+  // "nesting rule: 10 outer -> 8 default -> 6 inner" in index.css.
   "inline-flex shrink-0 items-center justify-center gap-2 rounded-full text-ui font-medium whitespace-nowrap transition-colors duration-150 outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-destructive/20 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
   {
     variants: {

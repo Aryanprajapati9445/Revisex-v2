@@ -31,10 +31,10 @@
   --color-status-rejected-bg: #33201e;
   --color-status-rejected-fg: #f87171;
 
-  /* Radius — sharper nesting rule: 8 outer -> 6 default -> 4 inner */
-  --radius-panel: 8px;
-  --radius-card: 6px;
-  --radius-control: 4px;
+  /* Radius — nesting rule: 10 outer -> 8 default -> 6 inner */
+  --radius-panel: 10px;
+  --radius-card: 8px;
+  --radius-control: 6px;
 
   /* Depth — minimal shadows; border + surface-elevated carry most separation
      now that this is a dark theme (heavy shadows don't read on dark bg). */
@@ -43,6 +43,9 @@
   /* Reserved for the marketing hero's layered mockup only — the app chrome
      stays flat. See PreviewCard/HeroMockup. */
   --shadow-hero: 0 24px 60px rgba(0, 0, 0, 0.55), 0 0 0 1px var(--color-border);
+  /* Warm accent glow — hover states and the new landing-page interactions
+     (CursorGlow, Tilt) only. Not used in app chrome. */
+  --shadow-glow-primary: 0 0 32px rgba(217, 164, 65, 0.25);
   --perspective-hero: 1400px;
 
   --font-sans: Inter, ui-sans-serif, system-ui, sans-serif;
