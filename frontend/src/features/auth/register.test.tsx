@@ -43,7 +43,7 @@ function taxonomy() {
 async function fillRequiredFields() {
   await userEvent.type(screen.getByLabelText(/full name/i), "New Student");
   await userEvent.type(screen.getByLabelText(/^email$/i), "new@test.edu");
-  await userEvent.type(screen.getByLabelText(/password/i), "password123");
+  await userEvent.type(screen.getByLabelText("Password"), "password123");
   await userEvent.selectOptions(await screen.findByLabelText(/program/i), "p1");
   await userEvent.selectOptions(await screen.findByLabelText(/branch/i), "b1");
 }

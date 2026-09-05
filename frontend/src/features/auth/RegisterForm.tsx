@@ -4,6 +4,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 import { useBranches, usePrograms } from "@/features/taxonomy/queries";
 import { ApiError } from "@/lib/api-client";
 import { PICKER_LIMIT } from "@/lib/query-keys";
@@ -69,9 +70,8 @@ export function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
 
       <div className="flex flex-col gap-1.5">
         <Label htmlFor="register-password">Password</Label>
-        <Input
+        <PasswordInput
           id="register-password"
-          type="password"
           required
           minLength={8}
           value={password}
