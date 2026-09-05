@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { ArrowRight } from "lucide-react";
 import { useLandingPrograms, useLandingStats } from "@/features/landing/queries";
 import { Reveal } from "@/components/motion/Reveal";
+import { AnimatedNumber } from "@/components/landing/AnimatedNumber";
 
 const COUNT_LABELS = [
   { key: "programs", label: "Programs" },
@@ -32,7 +33,11 @@ export function StatsStrip() {
         {COUNT_LABELS.map((item) => (
           <div key={item.key} className="flex flex-col gap-1 bg-surface px-5 py-5">
             <span className="font-mono text-title font-semibold tracking-tight text-text-primary">
-              {isLoading ? "—" : isError ? "—" : stats?.[item.key]}
+              {isLoading || isError || stats == null ? (
+                "—"
+              ) : (
+                <AnimatedNumber value={stats[item.key]} />
+              )}
             </span>
             <span className="text-caption text-text-muted">{item.label}</span>
           </div>
