@@ -131,12 +131,40 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [applySession]
   );
 
-  const register = useCallback(
-    async (input: RegisterInput) => {
-      applySession(await api.post<AuthPayload>("/api/auth/register", input));
+  const register = useCallback(async (input: RegisterInput) => {
+    const result = await api.post<{ user: User; needsVerification: boolean }>("/api/auth/register", input);
+    return { needsVerification: result.needsVerification, email: input.email };
+  }, []);
+
+  const verifyEmail = useCallback(
+    async (email: string, code: string) => {
+      applySession(await api.post<AuthPayload>("/api/auth/verify-email", { email, code }));
     },
     [applySession]
   );
+
+  const resendOtp = useCallback(async (email: string) => {
+    await api.post("/api/auth/resend-otp", { email });
+  }, []);
+
+  const forgotPassword = useCallback(async (email: string) => {
+    await api.post("/api/auth/forgot-password", { email });
+  }, []);
+
+  const resetPassword = useCallback(async (token: string, password: string) => {
+    await api.post("/api/auth/reset-password", { token, password });
+  }, []);
+
+  // Real implementations land in the OAuth callback/complete task — these
+  // stubs exist only so AuthContextValue's shape is satisfied in the
+  // meantime.
+  const applyOAuthSession = useCallback(async () => {
+    throw new Error("not implemented until the OAuth callback page lands");
+  }, []);
+
+  const completeOAuthProfile = useCallback(async () => {
+    throw new Error("not implemented until the OAuth complete page lands");
+  }, []);
 
   const logout = useCallback(() => {
     // Refresh tokens are stateless with no server-side revocation, so logout
@@ -146,8 +174,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [clearSession]);
 
   const value = useMemo<AuthContextValue>(
-    () => ({ user, status, login, register, logout }),
-    [user, status, login, register, logout]
+    () => ({
+      user,
+      status,
+      login,
+      register,
+      verifyEmail,
+      resendOtp,
+      forgotPassword,
+      resetPassword,
+      applyOAuthSession,
+      completeOAuthProfile,
+      logout,
+    }),
+    [
+      user,
+      status,
+      login,
+      register,
+      verifyEmail,
+      resendOtp,
+      forgotPassword,
+      resetPassword,
+      applyOAuthSession,
+      completeOAuthProfile,
+      logout,
+    ]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

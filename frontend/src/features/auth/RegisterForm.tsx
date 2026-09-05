@@ -10,7 +10,7 @@ import { ApiError } from "@/lib/api-client";
 import { PICKER_LIMIT } from "@/lib/query-keys";
 import { useAuth } from "./useAuth";
 
-export function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
+export function RegisterForm({ onRegistered }: { onRegistered?: (email: string) => void }) {
   const { register } = useAuth();
   const [fullName, setFullName] = useState("");
   const [email, setEmail] = useState("");
@@ -30,8 +30,8 @@ export function RegisterForm({ onSuccess }: { onSuccess?: () => void }) {
     setFieldErrors({});
     setPending(true);
     try {
-      await register({ email, password, full_name: fullName, branch_id: branchId });
-      onSuccess?.();
+      const result = await register({ email, password, full_name: fullName, branch_id: branchId });
+      onRegistered?.(result.email);
     } catch (err) {
       if (err instanceof ApiError && err.code === "EMAIL_TAKEN") {
         // 409 from the users_email_key unique constraint — belongs on the

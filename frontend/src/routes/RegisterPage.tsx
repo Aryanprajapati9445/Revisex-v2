@@ -11,7 +11,7 @@ export function RegisterPage() {
   return (
     <div className="mx-auto flex max-w-sm flex-col gap-6 py-12">
       <h1 className="text-title font-bold">Create an account</h1>
-      <RegisterForm onSuccess={() => navigate("/home", { replace: true })} />
+      <RegisterForm onRegistered={(email) => navigate(`/verify-email?email=${encodeURIComponent(email)}`)} />
       <p className="text-ui text-text-muted">
         Already have one?{" "}
         <Link to="/login" className="underline">

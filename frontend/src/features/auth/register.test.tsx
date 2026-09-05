@@ -53,7 +53,7 @@ beforeEach(() => {
 });
 
 describe("RegisterForm", () => {
-  it("registers with the selected branch and stores the session", async () => {
+  it("registers with the selected branch and reports needsVerification instead of authenticating", async () => {
     taxonomy();
     let body: Record<string, unknown> | null = null;
     server.use(
@@ -71,11 +71,11 @@ describe("RegisterForm", () => {
                 program_id: null,
                 branch_id: "b1",
                 enrollment_year: null,
+                email_verified: false,
                 created_at: "2026-01-01T00:00:00.000Z",
                 updated_at: "2026-01-01T00:00:00.000Z",
               },
-              accessToken: "acc",
-              refreshToken: "ref",
+              needsVerification: true,
             },
           },
           { status: 201 }
@@ -83,7 +83,8 @@ describe("RegisterForm", () => {
       })
     );
 
-    renderWithProviders(<RegisterForm />);
+    let registeredEmail: string | undefined;
+    renderWithProviders(<RegisterForm onRegistered={(email) => (registeredEmail = email)} />);
     await fillRequiredFields();
     await userEvent.click(screen.getByRole("button", { name: /create account/i }));
 
@@ -95,7 +96,8 @@ describe("RegisterForm", () => {
       full_name: "New Student",
       branch_id: "b1",
     });
-    await waitFor(() => expect(localStorage.getItem("refreshToken")).toBe("ref"));
+    await waitFor(() => expect(registeredEmail).toBe("new@test.edu"));
+    expect(localStorage.getItem("refreshToken")).toBeNull();
   });
 
   it("puts a taken email on the email field rather than in a banner", async () => {

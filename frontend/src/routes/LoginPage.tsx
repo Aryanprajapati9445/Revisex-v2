@@ -20,6 +20,11 @@ export function LoginPage() {
           Create one
         </Link>
       </p>
+      <p className="text-ui text-text-muted">
+        <Link to="/forgot-password" className="underline">
+          Forgot password?
+        </Link>
+      </p>
     </div>
   );
 }

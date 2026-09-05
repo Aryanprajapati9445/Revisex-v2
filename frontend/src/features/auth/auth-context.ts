@@ -14,11 +14,22 @@ export interface RegisterInput {
   branch_id: string;
 }
 
+export interface RegisterResult {
+  needsVerification: boolean;
+  email: string;
+}
+
 export interface AuthContextValue {
   user: User | null;
   status: AuthStatus;
   login: (email: string, password: string) => Promise<void>;
-  register: (input: RegisterInput) => Promise<void>;
+  register: (input: RegisterInput) => Promise<RegisterResult>;
+  verifyEmail: (email: string, code: string) => Promise<void>;
+  resendOtp: (email: string) => Promise<void>;
+  forgotPassword: (email: string) => Promise<void>;
+  resetPassword: (token: string, password: string) => Promise<void>;
+  applyOAuthSession: () => Promise<void>;
+  completeOAuthProfile: (pendingToken: string, branchId: string) => Promise<void>;
   logout: () => void;
 }
 

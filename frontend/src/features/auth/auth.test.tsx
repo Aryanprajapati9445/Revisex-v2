@@ -7,6 +7,7 @@ import { API, server } from "@/test/msw";
 import { renderWithProviders } from "@/test/render";
 import { LoginForm } from "./LoginForm";
 import { ProtectedRoute } from "./ProtectedRoute";
+import { RegisterForm } from "./RegisterForm";
 import { RoleGate } from "./RoleGate";
 import { useAuth } from "./useAuth";
 
@@ -18,6 +19,7 @@ const student = {
   program_id: null,
   branch_id: "b1",
   enrollment_year: null,
+  email_verified: true,
   created_at: "2026-01-01T00:00:00.000Z",
   updated_at: "2026-01-01T00:00:00.000Z",
 };
@@ -75,6 +77,68 @@ describe("login", () => {
 
     expect(await screen.findByText(/email or password is incorrect/i)).toBeInTheDocument();
     expect(screen.getByLabelText(/email/i)).toHaveValue("s@test.edu");
+  });
+});
+
+describe("register", () => {
+  it("does not authenticate immediately — reports needsVerification instead", async () => {
+    function paginated<T>(items: T[]) {
+      return { success: true, data: { items, pagination: { page: 1, limit: 100, total: items.length, totalPages: 1 } } };
+    }
+    const program = {
+      id: "p1",
+      code: "BTECH",
+      name: "B.Tech",
+      duration_semesters: 8,
+      is_active: true,
+      created_at: "2026-01-01T00:00:00.000Z",
+      updated_at: "2026-01-01T00:00:00.000Z",
+    };
+    const branch = {
+      id: "b1",
+      program_id: "p1",
+      code: "CSE",
+      name: "Computer Science",
+      is_active: true,
+      created_at: "2026-01-01T00:00:00.000Z",
+      updated_at: "2026-01-01T00:00:00.000Z",
+    };
+
+    server.use(
+      http.post(`${API}/api/auth/register`, () =>
+        HttpResponse.json({
+          success: true,
+          data: { user: { ...student, email_verified: false }, needsVerification: true },
+        })
+      ),
+      http.get(`${API}/api/programs`, () => HttpResponse.json(paginated([program]))),
+      http.get(`${API}/api/branches`, () => HttpResponse.json(paginated([branch])))
+    );
+
+    let captured: { needsVerification: boolean; email: string } | undefined;
+
+    function Harness() {
+      return (
+        <RegisterForm
+          onRegistered={(email) => {
+            captured = { needsVerification: true, email };
+          }}
+        />
+      );
+    }
+
+    renderWithProviders(<Harness />);
+
+    await userEvent.type(screen.getByLabelText(/full name/i), "New Student");
+    await userEvent.type(screen.getByLabelText(/^email$/i), "new@test.edu");
+    await userEvent.type(screen.getByLabelText("Password"), "password123");
+    await userEvent.selectOptions(await screen.findByLabelText(/program/i), "p1");
+    await userEvent.selectOptions(await screen.findByLabelText(/branch/i), "b1");
+    await userEvent.click(screen.getByRole("button", { name: /create account/i }));
+
+    await new Promise((r) => setTimeout(r, 0));
+    expect(captured?.email).toBe("new@test.edu");
+    expect(localStorage.getItem("refreshToken")).toBeNull();
   });
 });
 

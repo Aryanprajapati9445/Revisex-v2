@@ -44,8 +44,14 @@ export interface User {
   program_id: string | null;
   branch_id: string | null;
   enrollment_year: number | null;
+  email_verified: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface RegisterPayload {
+  user: User;
+  needsVerification: boolean;
 }
 
 export interface Note {

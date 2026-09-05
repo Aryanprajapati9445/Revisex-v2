@@ -6,9 +6,12 @@ import { AdminUsersPage } from "@/routes/admin/AdminUsersPage";
 import { AuditLogPage } from "@/routes/admin/AuditLogPage";
 import { RolesPage } from "@/routes/admin/RolesPage";
 import { BranchesPage } from "@/routes/BranchesPage";
+import { ForgotPasswordPage } from "@/routes/ForgotPasswordPage";
 import { HomePage } from "@/routes/HomePage";
 import { LandingPage } from "@/routes/LandingPage";
 import { LoginPage } from "@/routes/LoginPage";
+import { ResetPasswordPage } from "@/routes/ResetPasswordPage";
+import { VerifyEmailPage } from "@/routes/VerifyEmailPage";
 import { ModerationPage } from "@/routes/ModerationPage";
 import { MyUploadsPage } from "@/routes/MyUploadsPage";
 import { NotFoundPage } from "@/routes/NotFoundPage";
@@ -29,6 +32,9 @@ export function AppRoutes() {
         <Route index element={<LandingPage />} />
         <Route path="login" element={<LoginPage />} />
         <Route path="register" element={<RegisterPage />} />
+        <Route path="verify-email" element={<VerifyEmailPage />} />
+        <Route path="forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="reset-password" element={<ResetPasswordPage />} />
 
         <Route element={<ProtectedRoute />}>
           <Route path="home" element={<HomePage />} />
