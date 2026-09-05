@@ -11,7 +11,6 @@ export function AnimatedNumber({ value, duration = 900 }: AnimatedNumberProps) {
   const [display, setDisplay] = useState(0);
 
   useEffect(() => {
-    setDisplay(0);
     const startTime = Date.now();
 
     const interval = setInterval(() => {
