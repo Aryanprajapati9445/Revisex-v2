@@ -16,6 +16,8 @@ import { ModerationPage } from "@/routes/ModerationPage";
 import { MyUploadsPage } from "@/routes/MyUploadsPage";
 import { NotFoundPage } from "@/routes/NotFoundPage";
 import { NoteDetailPage } from "@/routes/NoteDetailPage";
+import { OAuthCallbackPage } from "@/routes/OAuthCallbackPage";
+import { OAuthCompletePage } from "@/routes/OAuthCompletePage";
 import { RegisterPage } from "@/routes/RegisterPage";
 import { SettingsPage } from "@/routes/SettingsPage";
 import { ProgramsPage } from "@/routes/ProgramsPage";
@@ -35,6 +37,8 @@ export function AppRoutes() {
         <Route path="verify-email" element={<VerifyEmailPage />} />
         <Route path="forgot-password" element={<ForgotPasswordPage />} />
         <Route path="reset-password" element={<ResetPasswordPage />} />
+        <Route path="oauth/callback" element={<OAuthCallbackPage />} />
+        <Route path="oauth/complete" element={<OAuthCompletePage />} />
 
         <Route element={<ProtectedRoute />}>
           <Route path="home" element={<HomePage />} />

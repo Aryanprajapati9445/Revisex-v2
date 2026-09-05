@@ -36,6 +36,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // Held in a ref, not state: the refresh handler must read the current value
   // without re-registering itself on every render.
   const refreshTokenRef = useRef<string | null>(readStoredRefreshToken());
+  // Snapshotted once at mount, never written to again: the boot-restore
+  // effect below must act on whatever was in storage when this provider
+  // mounted, not on refreshTokenRef.current — a sibling effect (e.g.
+  // OAuthCallbackPage's applyOAuthSession, which fires first since child
+  // effects commit before this provider's own) can mutate that ref before
+  // this effect runs, and re-reading it here would race that write.
+  const initialTokenRef = useRef<string | null>(refreshTokenRef.current);
 
   const applySession = useCallback(
     (payload: AuthPayload) => {
@@ -92,7 +99,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     let cancelled = false;
     async function restore() {
-      const token = refreshTokenRef.current;
+      const token = initialTokenRef.current;
       if (!token) {
         setStatus("anonymous");
         return;
@@ -155,16 +162,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await api.post("/api/auth/reset-password", { token, password });
   }, []);
 
-  // Real implementations land in the OAuth callback/complete task — these
-  // stubs exist only so AuthContextValue's shape is satisfied in the
-  // meantime.
-  const applyOAuthSession = useCallback(async () => {
-    throw new Error("not implemented until the OAuth callback page lands");
-  }, []);
+  const applyOAuthSession = useCallback(
+    async (accessToken: string, refreshToken: string) => {
+      setAccessToken(accessToken);
+      refreshTokenRef.current = refreshToken;
+      writeStoredRefreshToken(refreshToken);
+      queryClient.clear();
+      const me = await api.get<User>("/api/auth/me");
+      setUser(me);
+      setStatus("authenticated");
+    },
+    [queryClient]
+  );
 
-  const completeOAuthProfile = useCallback(async () => {
-    throw new Error("not implemented until the OAuth complete page lands");
-  }, []);
+  const completeOAuthProfile = useCallback(
+    async (pendingToken: string, branchId: string) => {
+      applySession(await api.post<AuthPayload>("/api/auth/google/complete", { pendingToken, branch_id: branchId }));
+    },
+    [applySession]
+  );
 
   const logout = useCallback(() => {
     // Refresh tokens are stateless with no server-side revocation, so logout

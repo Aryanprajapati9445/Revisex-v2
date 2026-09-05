@@ -28,7 +28,7 @@ export interface AuthContextValue {
   resendOtp: (email: string) => Promise<void>;
   forgotPassword: (email: string) => Promise<void>;
   resetPassword: (token: string, password: string) => Promise<void>;
-  applyOAuthSession: () => Promise<void>;
+  applyOAuthSession: (accessToken: string, refreshToken: string) => Promise<void>;
   completeOAuthProfile: (pendingToken: string, branchId: string) => Promise<void>;
   logout: () => void;
 }

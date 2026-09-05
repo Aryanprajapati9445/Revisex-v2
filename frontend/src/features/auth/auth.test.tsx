@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { Route, Routes } from "react-router-dom";
 import { API, server } from "@/test/msw";
 import { renderWithProviders } from "@/test/render";
+import { OAuthCallbackPage } from "@/routes/OAuthCallbackPage";
 import { LoginForm } from "./LoginForm";
 import { ProtectedRoute } from "./ProtectedRoute";
 import { RegisterForm } from "./RegisterForm";
@@ -274,5 +275,23 @@ describe("RoleGate", () => {
     );
 
     expect(await screen.findByText("admin link")).toBeInTheDocument();
+  });
+});
+
+describe("OAuth callback", () => {
+  it("reads tokens from the URL fragment and authenticates", async () => {
+    server.use(http.get(`${API}/api/auth/me`, () => HttpResponse.json({ success: true, data: student })));
+
+    window.location.hash = "accessToken=abc&refreshToken=def";
+
+    renderWithProviders(
+      <>
+        <OAuthCallbackPage />
+        <WhoAmI />
+      </>
+    );
+
+    expect(await screen.findByText("hello Student")).toBeInTheDocument();
+    expect(localStorage.getItem("refreshToken")).toBe("def");
   });
 });
