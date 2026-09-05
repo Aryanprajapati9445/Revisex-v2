@@ -17,6 +17,20 @@ const envSchema = z.object({
   BCRYPT_SALT_ROUNDS: z.coerce.number().int().min(4).max(15).default(10),
   AWS_REGION: z.string().min(1),
   AWS_S3_BUCKET: z.string().min(1),
+
+  // Google OAuth
+  GOOGLE_CLIENT_ID: z.string().min(1),
+  GOOGLE_CLIENT_SECRET: z.string().min(1),
+  GOOGLE_REDIRECT_URI: z.string().url(),
+  APP_URL: z.string().url().default("http://localhost:5173"),
+  OAUTH_TOKEN_SECRET: z.string().min(32),
+
+  // Outbound email (OTP + password reset)
+  SMTP_HOST: z.string().min(1),
+  SMTP_PORT: z.coerce.number().int().positive().default(587),
+  SMTP_USER: z.string().min(1),
+  SMTP_PASS: z.string().min(1),
+  MAIL_FROM: z.string().min(1),
 });
 
 const parsed = envSchema.safeParse(process.env);
