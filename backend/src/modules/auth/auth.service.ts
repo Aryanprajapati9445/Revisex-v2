@@ -2,7 +2,16 @@ import { pool } from "../../config/db.js";
 import { env } from "../../config/env.js";
 import { ApiError } from "../../lib/apiError.js";
 import { generateOtpCode, generateResetToken, sha256Hex } from "../../lib/hash.js";
-import { signTokenPair, verifyRefreshToken, type JwtPayload, type TokenPair } from "../../lib/jwt.js";
+import {
+  signOAuthPending,
+  signOAuthState,
+  signTokenPair,
+  verifyOAuthPending,
+  verifyOAuthState,
+  verifyRefreshToken,
+  type JwtPayload,
+  type TokenPair,
+} from "../../lib/jwt.js";
 import { sendMail } from "../../lib/mailer.js";
 import { hashPassword, verifyPassword } from "../../lib/password.js";
 import { isCheckViolation, isForeignKeyViolation, isUniqueViolation } from "../../lib/pgError.js";
@@ -219,6 +228,119 @@ export async function resetPassword(token: string, newPassword: string): Promise
   const passwordHash = await hashPassword(newPassword);
   await pool.query(`UPDATE users SET password_hash = $2, updated_at = now() WHERE id = $1`, [row.user_id, passwordHash]);
   await pool.query(`UPDATE password_reset_tokens SET consumed_at = now() WHERE id = $1`, [row.id]);
+}
+
+export function googleAuthUrl(): string {
+  const state = signOAuthState();
+  const params = new URLSearchParams({
+    client_id: env.GOOGLE_CLIENT_ID,
+    redirect_uri: env.GOOGLE_REDIRECT_URI,
+    response_type: "code",
+    scope: "openid email profile",
+    state,
+    access_type: "online",
+    prompt: "select_account",
+  });
+  return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+}
+
+interface GoogleProfile {
+  sub: string;
+  email: string;
+  email_verified: boolean;
+  name: string;
+}
+
+async function fetchGoogleProfile(code: string): Promise<GoogleProfile> {
+  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      code,
+      client_id: env.GOOGLE_CLIENT_ID,
+      client_secret: env.GOOGLE_CLIENT_SECRET,
+      redirect_uri: env.GOOGLE_REDIRECT_URI,
+      grant_type: "authorization_code",
+    }),
+  });
+  if (!tokenRes.ok) throw new ApiError(400, "OAUTH_FAILED", "Google token exchange failed");
+  const { access_token } = (await tokenRes.json()) as { access_token: string };
+
+  const profileRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+    headers: { Authorization: `Bearer ${access_token}` },
+  });
+  if (!profileRes.ok) throw new ApiError(400, "OAUTH_FAILED", "Fetching Google profile failed");
+  return (await profileRes.json()) as GoogleProfile;
+}
+
+export type GoogleCallbackResult = { kind: "session"; tokens: TokenPair } | { kind: "pending"; pendingToken: string };
+
+export async function handleGoogleCallback(code: string, state: string): Promise<GoogleCallbackResult> {
+  verifyOAuthState(state); // throws on invalid/expired/wrong-purpose state
+
+  const profile = await fetchGoogleProfile(code);
+
+  const { rows: byProvider } = await pool.query<User>(
+    `SELECT ${USER_COLUMNS} FROM users WHERE auth_provider = 'google' AND provider_user_id = $1`,
+    [profile.sub]
+  );
+  if (byProvider[0]) {
+    return { kind: "session", tokens: signTokenPair(toPayload(byProvider[0])) };
+  }
+
+  if (profile.email_verified) {
+    const { rows: byEmail } = await pool.query<User>(
+      `UPDATE users SET auth_provider = 'google', provider_user_id = $2, updated_at = now()
+       WHERE email = $1 AND auth_provider IS NULL
+       RETURNING ${USER_COLUMNS}`,
+      [profile.email, profile.sub]
+    );
+    if (byEmail[0]) {
+      return { kind: "session", tokens: signTokenPair(toPayload(byEmail[0])) };
+    }
+  }
+
+  const pendingToken = signOAuthPending({
+    provider: "google",
+    providerUserId: profile.sub,
+    email: profile.email,
+    fullName: profile.name,
+  });
+  return { kind: "pending", pendingToken };
+}
+
+export async function completeGoogleSignup(
+  pendingToken: string,
+  branchId: string
+): Promise<{ user: User; tokens: TokenPair }> {
+  let pending;
+  try {
+    pending = verifyOAuthPending(pendingToken);
+  } catch {
+    throw new ApiError(400, "INVALID_TOKEN", "This sign-up link is invalid or has expired");
+  }
+
+  try {
+    const { rows } = await pool.query<User>(
+      `INSERT INTO users (email, full_name, auth_provider, provider_user_id, role, branch_id, email_verified)
+       VALUES ($1, $2, $3, $4, 'student', $5, true)
+       RETURNING ${USER_COLUMNS}`,
+      [pending.email, pending.fullName, pending.provider, pending.providerUserId, branchId]
+    );
+    const user = rows[0]!;
+    return { user, tokens: signTokenPair(toPayload(user)) };
+  } catch (err) {
+    if (isUniqueViolation(err)) {
+      throw new ApiError(409, "EMAIL_TAKEN", "An account with this email already exists");
+    }
+    if (isForeignKeyViolation(err)) {
+      throw new ApiError(422, "VALIDATION_ERROR", "branch_id does not reference an existing branch");
+    }
+    if (isCheckViolation(err)) {
+      throw new ApiError(422, "VALIDATION_ERROR", "The submitted data does not meet the required constraints");
+    }
+    throw err;
+  }
 }
 
 export async function refresh(refreshToken: string): Promise<TokenPair> {

@@ -1,7 +1,8 @@
 import request from "supertest";
-import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../../src/app.js";
 import { pool } from "../../src/config/db.js";
+import { signOAuthPending } from "../../src/lib/jwt.js";
 import { truncateAll } from "../helpers/db.js";
 import { createBranch, createProgram, createUserFixture } from "../helpers/fixtures.js";
 
@@ -382,5 +383,130 @@ describe("POST /api/auth/logout", () => {
     const res = await request(app).post("/api/auth/logout").send({});
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ success: true, data: null });
+  });
+});
+
+describe("GET /api/auth/google", () => {
+  it("redirects to Google's consent screen with a state param", async () => {
+    const res = await request(app).get("/api/auth/google");
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toContain("accounts.google.com");
+    expect(res.headers.location).toContain("state=");
+  });
+});
+
+describe("GET /api/auth/google/callback", () => {
+  function mockGoogle(profile: { sub: string; email: string; email_verified: boolean; name: string }) {
+    vi.spyOn(global, "fetch")
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ access_token: "fake-google-token" }) } as Response)
+      .mockResolvedValueOnce({ ok: true, json: async () => profile } as Response);
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("redirects to /oauth/complete for a brand-new identity", async () => {
+    const stateRes = await request(app).get("/api/auth/google");
+    const state = new URL(stateRes.headers.location).searchParams.get("state")!;
+    mockGoogle({ sub: "google-new-1", email: "newgoogle@test.edu", email_verified: true, name: "New Googler" });
+
+    const res = await request(app).get(`/api/auth/google/callback?code=fake-code&state=${state}`);
+
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toContain("/oauth/complete#pending=");
+  });
+
+  it("redirects to /oauth/callback with a session for a known provider identity", async () => {
+    const program = await createProgram();
+    const branch = await createBranch(program.id);
+    await pool.query(
+      `INSERT INTO users (email, full_name, auth_provider, provider_user_id, role, branch_id, email_verified)
+       VALUES ('known-google@test.edu', 'Known Googler', 'google', 'google-known-1', 'student', $1, true)`,
+      [branch.id]
+    );
+    const stateRes = await request(app).get("/api/auth/google");
+    const state = new URL(stateRes.headers.location).searchParams.get("state")!;
+    mockGoogle({ sub: "google-known-1", email: "known-google@test.edu", email_verified: true, name: "Known Googler" });
+
+    const res = await request(app).get(`/api/auth/google/callback?code=fake-code&state=${state}`);
+
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toContain("/oauth/callback#accessToken=");
+  });
+
+  it("links to an existing verified-email password account instead of creating a duplicate", async () => {
+    const program = await createProgram();
+    const branch = await createBranch(program.id);
+    const { user } = await createUserFixture({
+      role: "student",
+      branchId: branch.id,
+      email: "link-me@test.edu",
+      emailVerified: true,
+    });
+    const stateRes = await request(app).get("/api/auth/google");
+    const state = new URL(stateRes.headers.location).searchParams.get("state")!;
+    mockGoogle({ sub: "google-link-1", email: "link-me@test.edu", email_verified: true, name: "Link Me" });
+
+    const res = await request(app).get(`/api/auth/google/callback?code=fake-code&state=${state}`);
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toContain("/oauth/callback#accessToken=");
+
+    const { rows } = await pool.query(`SELECT auth_provider, provider_user_id FROM users WHERE id = $1`, [user.id]);
+    expect(rows[0].auth_provider).toBe("google");
+    expect(rows[0].provider_user_id).toBe("google-link-1");
+  });
+
+  it("does NOT link when Google reports the email as unverified", async () => {
+    const program = await createProgram();
+    const branch = await createBranch(program.id);
+    const { user } = await createUserFixture({
+      role: "student",
+      branchId: branch.id,
+      email: "unverified-link@test.edu",
+      emailVerified: true,
+    });
+    const stateRes = await request(app).get("/api/auth/google");
+    const state = new URL(stateRes.headers.location).searchParams.get("state")!;
+    mockGoogle({ sub: "google-unverified-1", email: "unverified-link@test.edu", email_verified: false, name: "Unverified" });
+
+    const res = await request(app).get(`/api/auth/google/callback?code=fake-code&state=${state}`);
+    expect(res.headers.location).toContain("/oauth/complete#pending=");
+
+    const { rows } = await pool.query(`SELECT auth_provider FROM users WHERE id = $1`, [user.id]);
+    expect(rows[0].auth_provider).toBeNull();
+  });
+
+  it("redirects to /login?error=oauth_failed on an invalid state", async () => {
+    const res = await request(app).get(`/api/auth/google/callback?code=fake-code&state=garbage`);
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toContain("/login?error=oauth_failed");
+  });
+});
+
+describe("POST /api/auth/google/complete", () => {
+  it("creates a verified, password-less account and returns tokens", async () => {
+    const program = await createProgram();
+    const branch = await createBranch(program.id);
+    const pendingToken = signOAuthPending({
+      provider: "google",
+      providerUserId: "google-complete-1",
+      email: "complete@test.edu",
+      fullName: "Complete Me",
+    });
+
+    const res = await request(app).post("/api/auth/google/complete").send({ pendingToken, branch_id: branch.id });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.user.email_verified).toBe(true);
+    expect(typeof res.body.data.accessToken).toBe("string");
+  });
+
+  it("rejects an invalid pending token with 400", async () => {
+    const res = await request(app)
+      .post("/api/auth/google/complete")
+      .send({ pendingToken: "garbage", branch_id: "00000000-0000-0000-0000-000000000000" });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("INVALID_TOKEN");
   });
 });
