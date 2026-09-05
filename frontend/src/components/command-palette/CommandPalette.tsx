@@ -47,7 +47,7 @@ export function CommandPalette() {
             <Command label="Command palette" shouldFilter>
               <Command.Input
                 autoFocus
-                placeholder="Jump to..."
+                placeholder="Jump to…"
                 className="w-full border-b border-border bg-transparent px-4 py-3 text-ui text-text-primary outline-none placeholder:text-text-muted"
               />
               <Command.List className="max-h-80 overflow-y-auto p-2">

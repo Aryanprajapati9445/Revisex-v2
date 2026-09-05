@@ -13,6 +13,10 @@ export function AppShell() {
           <Outlet />
         </PageTransition>
       </main>
+      <footer className="mx-auto flex max-w-[90rem] flex-wrap items-center justify-between gap-3 border-t border-border px-6 py-6 text-caption text-text-tertiary sm:px-8">
+        <span>Notes — a shared library for coursework, built by students.</span>
+        <span>&copy; {new Date().getFullYear()}</span>
+      </footer>
     </div>
   );
 }

@@ -1,7 +1,6 @@
-import { ArrowRight, LayoutGrid, ShieldCheck, Sparkles, Upload as UploadIcon } from "lucide-react";
+import { ArrowRight, Sparkles } from "lucide-react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { ErrorState } from "@/components/layout/ErrorState";
 import { LoadingState } from "@/components/layout/LoadingState";
@@ -11,24 +10,6 @@ import { NoteCard } from "@/features/notes/NoteCard";
 import { useNotes } from "@/features/notes/queries";
 import { TaxonomyCard } from "@/features/taxonomy/TaxonomyCard";
 import { usePrograms } from "@/features/taxonomy/queries";
-
-const FEATURES = [
-  {
-    icon: LayoutGrid,
-    title: "Browse by course",
-    body: "Program, branch, semester, subject — pick your way down to exactly the notes you need.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Moderated for quality",
-    body: "Every upload is reviewed before it's approved, so what you find has already been checked.",
-  },
-  {
-    icon: UploadIcon,
-    title: "Give back in minutes",
-    body: "Upload your own notes in two steps and they're in front of the next person in your class.",
-  },
-];
 
 export function HomePage() {
   const { status, user } = useAuth();
@@ -44,7 +25,7 @@ export function HomePage() {
           <Sparkles className="size-3.5 text-primary" strokeWidth={2} aria-hidden="true" />
           College notes, organized
         </span>
-        <h1 className="max-w-2xl text-display font-semibold tracking-tight text-text-primary">
+        <h1 className="max-w-2xl font-mono text-display font-semibold tracking-tight text-text-primary">
           Find the notes your syllabus already promised you.
         </h1>
         <p className="max-w-lg text-lead text-text-muted">
@@ -128,21 +109,6 @@ export function HomePage() {
             ))}
           </Stagger>
         )}
-      </section>
-
-      <section className="flex flex-col gap-8">
-        <h2 className="text-title font-bold text-text-primary">Everything organized the way class actually works</h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-          {FEATURES.map((feature) => (
-            <Card key={feature.title} className="hover:-translate-y-0.5 hover:shadow-floating">
-              <span className="flex size-9 items-center justify-center rounded-control bg-accent text-accent-foreground">
-                <feature.icon className="size-4" strokeWidth={2} aria-hidden="true" />
-              </span>
-              <h3 className="text-base font-medium text-text-primary">{feature.title}</h3>
-              <p className="text-ui text-text-muted">{feature.body}</p>
-            </Card>
-          ))}
-        </div>
       </section>
 
       {!isAuthenticated && (

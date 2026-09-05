@@ -7,14 +7,14 @@ describe("CommandPalette", () => {
   it("opens on Cmd+K and closes on Escape", async () => {
     renderWithProviders(<CommandPalette />);
 
-    expect(screen.queryByPlaceholderText("Jump to...")).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText("Jump to…")).not.toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: "k", metaKey: true });
-    expect(screen.getByPlaceholderText("Jump to...")).toBeInTheDocument();
+    expect(screen.getByPlaceholderText("Jump to…")).toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: "Escape" });
     await waitFor(() => {
-      expect(screen.queryByPlaceholderText("Jump to...")).not.toBeInTheDocument();
+      expect(screen.queryByPlaceholderText("Jump to…")).not.toBeInTheDocument();
     });
   });
 

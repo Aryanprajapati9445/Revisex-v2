@@ -2,12 +2,12 @@ import { ArrowRight, LayoutGrid, ShieldCheck, Upload as UploadIcon } from "lucid
 import { Link, Navigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Reveal } from "@/components/motion/Reveal";
-import { Stagger, StaggerItem } from "@/components/motion/Stagger";
 import { PreviewCard } from "@/components/landing/PreviewCard";
 import { StatsStrip } from "@/components/landing/StatsStrip";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { PullQuote } from "@/components/landing/PullQuote";
 import { useAuth } from "@/features/auth/useAuth";
+import { cn } from "@/lib/utils";
 
 const FEATURES = [
   {
@@ -39,7 +39,7 @@ export function LandingPage() {
           <span className="rounded-control border border-border bg-surface px-2.5 py-1 font-mono text-caption text-text-muted">
             College notes, organized
           </span>
-          <h1 className="max-w-2xl text-display font-semibold tracking-tight text-text-primary">
+          <h1 className="max-w-2xl font-mono text-display font-semibold tracking-tight text-text-primary">
             Find the notes your syllabus already promised you.
           </h1>
           <p className="max-w-lg text-lead text-text-muted">
@@ -68,36 +68,40 @@ export function LandingPage() {
         </Reveal>
       </section>
 
-      <Reveal>
-        <StatsStrip />
-      </Reveal>
+      <StatsStrip />
 
-      <Reveal className="flex flex-col gap-10">
+      <div className="flex flex-col gap-10">
         <h2 className="text-title font-semibold tracking-tight text-text-primary">
           How it works
         </h2>
         <HowItWorks />
-      </Reveal>
+      </div>
 
-      <Stagger className="grid gap-4 sm:grid-cols-3">
-        {FEATURES.map((feature) => (
-          <StaggerItem key={feature.title}>
-            <div className="flex h-full flex-col gap-3 rounded-panel border border-border bg-surface p-5">
-              <span className="flex size-9 items-center justify-center rounded-control bg-accent text-accent-foreground">
-                <feature.icon className="size-4" strokeWidth={2} aria-hidden="true" />
-              </span>
-              <h2 className="text-ui font-semibold text-text-primary">{feature.title}</h2>
-              <p className="text-ui text-text-muted">{feature.body}</p>
+      <div className="flex flex-col divide-y divide-border rounded-panel border border-border bg-surface">
+        {FEATURES.map((feature, index) => (
+          <div
+            key={feature.title}
+            className={cn(
+              "flex flex-col gap-3 p-6 sm:flex-row sm:items-start sm:gap-6",
+              index === 0 && "sm:py-8"
+            )}
+          >
+            <feature.icon
+              className="size-5 shrink-0 text-accent-foreground"
+              strokeWidth={2}
+              aria-hidden="true"
+            />
+            <div className="flex flex-col gap-1.5">
+              <h3 className="text-ui font-semibold text-text-primary">{feature.title}</h3>
+              <p className="max-w-md text-ui text-text-muted">{feature.body}</p>
             </div>
-          </StaggerItem>
+          </div>
         ))}
-      </Stagger>
+      </div>
 
-      <Reveal>
-        <PullQuote />
-      </Reveal>
+      <PullQuote />
 
-      <Reveal className="flex flex-col items-start gap-4 rounded-panel border border-border bg-surface-elevated p-8">
+      <div className="flex flex-col items-start gap-4 rounded-panel border border-border bg-surface-elevated p-8">
         <h2 className="text-title font-semibold text-text-primary">Ready to find your notes?</h2>
         <div className="flex flex-wrap items-center gap-3">
           <Button asChild size="lg">
@@ -107,7 +111,7 @@ export function LandingPage() {
             <Link to="/login">Log in</Link>
           </Button>
         </div>
-      </Reveal>
+      </div>
     </div>
   );
 }

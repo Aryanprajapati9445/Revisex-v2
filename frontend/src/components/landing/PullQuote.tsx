@@ -3,8 +3,8 @@
 export function PullQuote() {
   return (
     <p className="max-w-2xl text-title font-semibold tracking-tight text-text-primary">
-      "Course notes end up scattered across chats, drives, and forgotten folders. This is one
-      place for them instead."
+      &ldquo;Course notes end up scattered across chats, drives, and forgotten folders. This is one
+      place for them instead.&rdquo;
     </p>
   );
 }
