@@ -1,6 +1,16 @@
 import { Router } from "express";
 import { requireAuth } from "../../middleware/auth.js";
-import { login, logout, me, refresh, register, resendOtp, verifyEmail } from "./auth.controller.js";
+import {
+  forgotPassword,
+  login,
+  logout,
+  me,
+  refresh,
+  register,
+  resendOtp,
+  resetPassword,
+  verifyEmail,
+} from "./auth.controller.js";
 
 export const authRouter = Router();
 
@@ -8,6 +18,8 @@ authRouter.post("/register", register);
 authRouter.post("/verify-email", verifyEmail);
 authRouter.post("/resend-otp", resendOtp);
 authRouter.post("/login", login);
+authRouter.post("/forgot-password", forgotPassword);
+authRouter.post("/reset-password", resetPassword);
 authRouter.post("/refresh", refresh);
 authRouter.post("/logout", logout);
 authRouter.get("/me", requireAuth, me);

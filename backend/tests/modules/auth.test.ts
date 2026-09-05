@@ -217,6 +217,97 @@ describe("POST /api/auth/login — verification gate", () => {
   });
 });
 
+describe("POST /api/auth/forgot-password", () => {
+  it("sends a reset email for an existing password account", async () => {
+    const program = await createProgram();
+    const branch = await createBranch(program.id);
+    await createUserFixture({ role: "student", branchId: branch.id, email: "forgot@test.edu", emailVerified: true });
+
+    const res = await request(app).post("/api/auth/forgot-password").send({ email: "forgot@test.edu" });
+
+    expect(res.status).toBe(200);
+    expect(mailerMock).toHaveBeenCalledTimes(1);
+    expect(mailerMock.mock.calls[0][0].to).toBe("forgot@test.edu");
+  });
+
+  it("returns 200 without sending anything for an unknown email", async () => {
+    const res = await request(app).post("/api/auth/forgot-password").send({ email: "nobody@test.edu" });
+    expect(res.status).toBe(200);
+    expect(mailerMock).not.toHaveBeenCalled();
+  });
+
+  it("returns 200 without sending anything for a password-less (OAuth-only) account", async () => {
+    const program = await createProgram();
+    const branch = await createBranch(program.id);
+    await pool.query(
+      `INSERT INTO users (email, full_name, auth_provider, provider_user_id, role, branch_id, email_verified)
+       VALUES ('oauth-only@test.edu', 'OAuth User', 'google', 'google-sub-1', 'student', $1, true)`,
+      [branch.id]
+    );
+
+    const res = await request(app).post("/api/auth/forgot-password").send({ email: "oauth-only@test.edu" });
+    expect(res.status).toBe(200);
+    expect(mailerMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/auth/reset-password", () => {
+  async function requestResetAndGetToken(email: string) {
+    await request(app).post("/api/auth/forgot-password").send({ email });
+    const html = mailerMock.mock.calls.at(-1)![0].html as string;
+    return html.match(/token=([a-f0-9]+)/)![1];
+  }
+
+  it("resets the password with a valid token", async () => {
+    const program = await createProgram();
+    const branch = await createBranch(program.id);
+    await createUserFixture({ role: "student", branchId: branch.id, email: "reset@test.edu", emailVerified: true });
+
+    const token = await requestResetAndGetToken("reset@test.edu");
+    const res = await request(app).post("/api/auth/reset-password").send({ token, password: "newpassword456" });
+    expect(res.status).toBe(200);
+
+    const loginRes = await request(app)
+      .post("/api/auth/login")
+      .send({ email: "reset@test.edu", password: "newpassword456" });
+    expect(loginRes.status).toBe(200);
+  });
+
+  it("rejects a reused token with 410 TOKEN_USED", async () => {
+    const program = await createProgram();
+    const branch = await createBranch(program.id);
+    await createUserFixture({ role: "student", branchId: branch.id, email: "reuse@test.edu", emailVerified: true });
+    const token = await requestResetAndGetToken("reuse@test.edu");
+
+    await request(app).post("/api/auth/reset-password").send({ token, password: "firstchange1" });
+    const res = await request(app).post("/api/auth/reset-password").send({ token, password: "secondchange1" });
+
+    expect(res.status).toBe(410);
+    expect(res.body.error.code).toBe("TOKEN_USED");
+  });
+
+  it("rejects an expired token with 410 TOKEN_EXPIRED", async () => {
+    const program = await createProgram();
+    const branch = await createBranch(program.id);
+    await createUserFixture({ role: "student", branchId: branch.id, email: "expired@test.edu", emailVerified: true });
+    const token = await requestResetAndGetToken("expired@test.edu");
+    await pool.query(`UPDATE password_reset_tokens SET expires_at = now() - interval '1 minute'`);
+
+    const res = await request(app).post("/api/auth/reset-password").send({ token, password: "wontwork123" });
+
+    expect(res.status).toBe(410);
+    expect(res.body.error.code).toBe("TOKEN_EXPIRED");
+  });
+
+  it("rejects an unknown token with 400 INVALID_TOKEN", async () => {
+    const res = await request(app)
+      .post("/api/auth/reset-password")
+      .send({ token: "not-a-real-token", password: "wontwork123" });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe("INVALID_TOKEN");
+  });
+});
+
 describe("POST /api/auth/login", () => {
   it("logs in with correct credentials", async () => {
     const program = await createProgram();

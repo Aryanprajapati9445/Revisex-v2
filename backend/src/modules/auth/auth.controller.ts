@@ -29,6 +29,9 @@ const resendOtpSchema = z.object({
   email: z.string().email(),
 });
 
+const forgotPasswordSchema = z.object({ email: z.string().email() });
+const resetPasswordSchema = z.object({ token: z.string().min(1), password: z.string().min(8).max(72) });
+
 export async function register(req: Request, res: Response, next: NextFunction) {
   try {
     const input = registerSchema.parse(req.body);
@@ -44,6 +47,26 @@ export async function verifyEmail(req: Request, res: Response, next: NextFunctio
     const { email, code } = verifyEmailSchema.parse(req.body);
     const { user, tokens } = await authService.verifyEmail(email, code);
     sendSuccess(res, { user, ...tokens });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function forgotPassword(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { email } = forgotPasswordSchema.parse(req.body);
+    await authService.forgotPassword(email);
+    sendSuccess(res, null);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function resetPassword(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { token, password } = resetPasswordSchema.parse(req.body);
+    await authService.resetPassword(token, password);
+    sendSuccess(res, null);
   } catch (err) {
     next(err);
   }

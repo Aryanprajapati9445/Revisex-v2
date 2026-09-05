@@ -1,6 +1,7 @@
 import { pool } from "../../config/db.js";
+import { env } from "../../config/env.js";
 import { ApiError } from "../../lib/apiError.js";
-import { generateOtpCode, sha256Hex } from "../../lib/hash.js";
+import { generateOtpCode, generateResetToken, sha256Hex } from "../../lib/hash.js";
 import { signTokenPair, verifyRefreshToken, type JwtPayload, type TokenPair } from "../../lib/jwt.js";
 import { sendMail } from "../../lib/mailer.js";
 import { hashPassword, verifyPassword } from "../../lib/password.js";
@@ -168,6 +169,56 @@ export async function login(email: string, password: string): Promise<{ user: Us
 
   const { password_hash: _drop, ...user } = row;
   return { user, tokens: signTokenPair(toPayload(user)) };
+}
+
+export async function forgotPassword(email: string): Promise<void> {
+  const { rows } = await pool.query<{ id: string; email: string; password_hash: string | null }>(
+    `SELECT id, email, password_hash FROM users WHERE email = $1`,
+    [email]
+  );
+  const user = rows[0];
+  if (!user || !user.password_hash) return;
+
+  const { rows: latest } = await pool.query<{ created_at: string }>(
+    `SELECT created_at FROM password_reset_tokens WHERE user_id = $1 ORDER BY created_at DESC LIMIT 1`,
+    [user.id]
+  );
+  const last = latest[0];
+  if (last && Date.now() - new Date(last.created_at).getTime() < 60_000) return;
+
+  const rawToken = generateResetToken();
+  const tokenHash = sha256Hex(rawToken);
+  await pool.query(
+    `INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES ($1, $2, now() + interval '1 hour')`,
+    [user.id, tokenHash]
+  );
+
+  const link = `${env.APP_URL}/reset-password?token=${rawToken}`;
+  await sendMail({
+    to: user.email,
+    subject: "Reset your password",
+    html: `<p>Reset your password: <a href="${link}">${link}</a></p><p>This link expires in 1 hour.</p>`,
+  });
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<void> {
+  const tokenHash = sha256Hex(token);
+  const { rows } = await pool.query<{
+    id: string;
+    user_id: string;
+    expires_at: string;
+    consumed_at: string | null;
+  }>(`SELECT id, user_id, expires_at, consumed_at FROM password_reset_tokens WHERE token_hash = $1`, [tokenHash]);
+  const row = rows[0];
+  if (!row) throw new ApiError(400, "INVALID_TOKEN", "This reset link is invalid");
+  if (row.consumed_at) throw new ApiError(410, "TOKEN_USED", "This reset link has already been used");
+  if (new Date(row.expires_at).getTime() < Date.now()) {
+    throw new ApiError(410, "TOKEN_EXPIRED", "This reset link has expired");
+  }
+
+  const passwordHash = await hashPassword(newPassword);
+  await pool.query(`UPDATE users SET password_hash = $2, updated_at = now() WHERE id = $1`, [row.user_id, passwordHash]);
+  await pool.query(`UPDATE password_reset_tokens SET consumed_at = now() WHERE id = $1`, [row.id]);
 }
 
 export async function refresh(refreshToken: string): Promise<TokenPair> {
