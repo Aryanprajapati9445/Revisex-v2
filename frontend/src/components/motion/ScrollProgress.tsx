@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
 import { motion, useScroll, useSpring } from "framer-motion";
-import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
 // A thin, page-wide progress cue — the one piece of "whole app" scroll
 // interactivity that doesn't cost anything on dense/functional pages.
 export function ScrollProgress() {
-  const reducedMotion = useReducedMotion();
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, { stiffness: 280, damping: 32, mass: 0.3 });
   // Framer reports progress as 1 (not 0) when there's no scrollable
@@ -25,7 +23,7 @@ export function ScrollProgress() {
     };
   }, []);
 
-  if (reducedMotion || !canScroll) return null;
+  if (!canScroll) return null;
 
   return (
     <motion.div

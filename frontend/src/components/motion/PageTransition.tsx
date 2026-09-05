@@ -1,13 +1,9 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { type ReactNode } from "react";
 import { useLocation } from "react-router-dom";
-import { useReducedMotion } from "@/hooks/use-reduced-motion";
 
 export function PageTransition({ children }: { children: ReactNode }) {
   const location = useLocation();
-  const reducedMotion = useReducedMotion();
-
-  if (reducedMotion) return <>{children}</>;
 
   return (
     <AnimatePresence mode="wait" initial={false}>

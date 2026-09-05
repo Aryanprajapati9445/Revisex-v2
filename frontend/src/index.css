@@ -142,8 +142,6 @@
     overflow-x: clip;
   }
 
-  /* Both focus-visible rings and reduced-motion are respected by every
-     interactive element in this design. */
   :focus-visible {
     outline: 2px solid var(--color-primary);
     outline-offset: 2px;
@@ -152,14 +150,5 @@
   .text-display,
   .text-title {
     font-family: var(--font-display);
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-      animation-duration: 0.01ms !important;
-      transition-duration: 0.01ms !important;
-    }
   }
 }
