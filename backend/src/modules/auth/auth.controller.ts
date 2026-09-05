@@ -20,11 +20,40 @@ const refreshSchema = z.object({
   refreshToken: z.string().min(1),
 });
 
+const verifyEmailSchema = z.object({
+  email: z.string().email(),
+  code: z.string().length(6),
+});
+
+const resendOtpSchema = z.object({
+  email: z.string().email(),
+});
+
 export async function register(req: Request, res: Response, next: NextFunction) {
   try {
     const input = registerSchema.parse(req.body);
-    const { user, tokens } = await authService.registerStudent(input);
-    sendSuccess(res, { user, ...tokens }, 201);
+    const { user, needsVerification } = await authService.registerStudent(input);
+    sendSuccess(res, { user, needsVerification }, 201);
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function verifyEmail(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { email, code } = verifyEmailSchema.parse(req.body);
+    const { user, tokens } = await authService.verifyEmail(email, code);
+    sendSuccess(res, { user, ...tokens });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function resendOtp(req: Request, res: Response, next: NextFunction) {
+  try {
+    const { email } = resendOtpSchema.parse(req.body);
+    await authService.resendOtp(email);
+    sendSuccess(res, null);
   } catch (err) {
     next(err);
   }
