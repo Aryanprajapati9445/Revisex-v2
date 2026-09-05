@@ -30,6 +30,10 @@ moment someone logs in.
 3. Rewrite landing page copy so each section creates a reason to keep
    scrolling (problem → agitate → resolve arc), without introducing
    fabricated social proof — `PullQuote` stays a real/plain quote.
+4. Remove `prefers-reduced-motion` handling app-wide (explicit user
+   decision — see "Accessibility trade-off" below): animations and
+   transitions always play at full strength, regardless of the visitor's
+   OS-level motion preference.
 
 ## Non-goals
 
@@ -136,9 +140,8 @@ All built on the motion primitives already in
 - **Cursor-reactive glow** behind the hero: a radial gradient using
   `--shadow-glow-primary`'s color that follows the pointer within the hero
   section only, implemented as a small new component
-  (`components/landing/CursorGlow.tsx`) gated behind
-  `prefers-reduced-motion` (no-ops to a static glow if reduced motion is
-  set, consistent with the existing reduced-motion rule in `index.css`).
+  (`components/landing/CursorGlow.tsx`). Always active — see accessibility
+  trade-off below.
 - **Sticky-scroll `ProductShowcase`**: restructure so the product
   screenshot/mockup pins (`position: sticky`) while its accompanying
   feature callouts scroll past beside it, using `Reveal`/`Stagger` for the
@@ -151,6 +154,17 @@ All built on the motion primitives already in
 - **Hover-tilt on `PreviewCard` and primary CTA buttons**: subtle
   perspective tilt following pointer position on hover (desktop only;
   no-op on touch), using the existing `--perspective-hero` token.
+
+### Accessibility trade-off (explicit user decision)
+
+The existing global rule in `index.css` — collapsing all animation/transition
+durations to near-zero under `@media (prefers-reduced-motion: reduce)` — is
+removed entirely as part of this redesign, at the user's explicit request.
+This means visitors who have set a system-level reduced-motion preference
+(often for vestibular disorders/motion sensitivity) will get the full cursor
+glow, tilt, sticky-scroll, and count-up effects with no way to opt out via
+that setting. Flagged and confirmed with the user on 2026-09-05; no further
+action needed unless revisited later.
 
 ## 3. Content / copy
 
@@ -192,8 +206,14 @@ tone*, not every character.
 - Existing tests (`landing-page.test.tsx`, `motion.test.tsx`) get updated
   for the new copy/structure rather than replaced; no test infra changes.
 - No backend, API, or routing changes — this is frontend-only.
+- Remove the `@media (prefers-reduced-motion: reduce)` block from
+  `frontend/src/index.css`'s `@layer base` and any per-component
+  reduced-motion gating found during implementation (motion primitives,
+  `CursorGlow`, tilt handlers) — animations run at full strength
+  unconditionally.
 
 ## Open questions
 
-None outstanding — all decisions above were confirmed with the user during
+None outstanding — all decisions above, including the removal of
+`prefers-reduced-motion` support, were confirmed with the user during
 brainstorming (2026-09-05).
