@@ -10,6 +10,7 @@ import { HowItWorks } from "@/components/landing/HowItWorks";
 import { ProductShowcase } from "@/components/landing/ProductShowcase";
 import { Features } from "@/components/landing/Features";
 import { PullQuote } from "@/components/landing/PullQuote";
+import { CursorGlow } from "@/components/landing/CursorGlow";
 import { useAuth } from "@/features/auth/useAuth";
 
 export function LandingPage() {
@@ -19,7 +20,7 @@ export function LandingPage() {
 
   return (
     <div className="flex flex-col gap-28 pb-20">
-      <section className="grid min-w-0 grid-cols-1 items-center gap-12 pt-16 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-8">
+      <CursorGlow className="grid min-w-0 grid-cols-1 items-center gap-12 pt-16 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)] lg:gap-8">
         <div className="flex min-w-0 flex-col items-start gap-6 text-left">
           <span className="rounded-control border border-border bg-surface px-2.5 py-1 font-mono text-caption text-text-muted">
             YOUR CAMPUS NOTE LIBRARY
@@ -58,7 +59,7 @@ export function LandingPage() {
             <PreviewCard />
           </Parallax>
         </Reveal>
-      </section>
+      </CursorGlow>
 
       <StatsStrip />
 
