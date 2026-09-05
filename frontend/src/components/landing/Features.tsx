@@ -5,22 +5,22 @@ const FEATURES = [
   {
     icon: LayoutGrid,
     title: "Browse by course",
-    body: "Find notes using your program, branch, semester, and subject.",
+    body: "Filter by program, branch, semester, and subject — not endless scrolling.",
   },
   {
     icon: ShieldCheck,
     title: "Community reviewed",
-    body: "Every upload goes through review before appearing in the library.",
+    body: "Every upload is checked before it reaches the library.",
   },
   {
     icon: Search,
     title: "Search instantly",
-    body: "Find the exact subject or topic without digging through old chats.",
+    body: "Type a subject or topic and skip the old chat threads entirely.",
   },
   {
     icon: UploadIcon,
     title: "Give back",
-    body: "Upload your notes and help the next student prepare faster.",
+    body: "Upload the notes that helped you, and help the next student too.",
   },
 ] as const;
 

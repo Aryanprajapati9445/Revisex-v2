@@ -20,8 +20,9 @@ export function ProblemSection() {
           Your notes shouldn&rsquo;t live in five different places.
         </h2>
         <p className="text-ui text-text-muted">
-          WhatsApp groups. Google Drive folders. Telegram chats. Screenshots. Random PDFs. By exam
-          week, nobody remembers where the good notes went — or whether that link still works.
+          WhatsApp groups. Google Drive links that expire. Screenshots you can&rsquo;t search. By
+          exam week, nobody remembers which PDF is the final syllabus version — or whether the
+          link even still works.
         </p>
       </div>
 

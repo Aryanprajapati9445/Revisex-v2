@@ -32,8 +32,8 @@ export function LandingPage() {
             Start studying.
           </h1>
           <p className="max-w-lg text-lead text-text-muted">
-            Find course notes shared by students in your program, branch, and semester —
-            organized, searchable, and reviewed before they reach the library.
+            Every semester, the same notes get retyped, re-photographed, and re-lost in five
+            different WhatsApp groups. Yours don&rsquo;t have to.
           </p>
           <div className="flex flex-wrap items-center gap-3 pt-2">
             <Tilt strength={4} className="inline-block">
@@ -90,7 +90,8 @@ export function LandingPage() {
             Your next study session starts here.
           </h2>
           <p className="max-w-md text-ui text-text-muted">
-            Find the notes your course needs — or upload the ones that helped you.
+            Stop hunting through five chats for the right PDF. Find it here — or upload the one
+            you already have.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-3">

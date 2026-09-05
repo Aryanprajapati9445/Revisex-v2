@@ -7,19 +7,19 @@ const STEPS = [
     number: "01",
     icon: BookOpen,
     title: "Choose your course",
-    body: "Select your program, branch, semester, and subject.",
+    body: "Find your exact course in three taps, not three group chats.",
   },
   {
     number: "02",
     icon: ShieldCheck,
     title: "Open trusted notes",
-    body: "Browse notes that have already passed community review.",
+    body: "Every note is reviewed before it reaches you — no dead links, no wrong-subject uploads.",
   },
   {
     number: "03",
     icon: UploadCloud,
     title: "Study or share",
-    body: "Download what you need — or give back by uploading your own.",
+    body: "Download instantly, or upload the notes that got you through the exam.",
   },
 ] as const;
 
