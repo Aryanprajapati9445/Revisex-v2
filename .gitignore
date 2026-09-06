@@ -17,3 +17,5 @@ npm-debug.log*
 # Playwright MCP scratch output (browser snapshots/console logs from the
 # taste skill run — the analysis artifacts themselves are committed)
 .playwright-mcp/
+.vercel
+.env*
