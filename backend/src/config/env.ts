@@ -6,6 +6,9 @@ loadDotenv();
 const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4000),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  // Comma-separated list of allowed origins (e.g. the Vercel production
+  // domain plus any preview deployment domains). A single origin still works
+  // unchanged.
   CORS_ORIGIN: z.string().min(1).default("http://localhost:5173"),
   DATABASE_URL: z.string().url().refine((url) => !url.includes("<password>"), {
     message: "DATABASE_URL still has the <user>:<password> placeholder — see .env.example",

@@ -26,8 +26,10 @@ import { auditRouter } from "./modules/admin/audit.routes.js";
 export function createApp() {
   const app = express();
 
+  const allowedOrigins = env.CORS_ORIGIN.split(",").map((origin) => origin.trim());
+
   app.use(helmet());
-  app.use(cors({ origin: env.CORS_ORIGIN }));
+  app.use(cors({ origin: allowedOrigins }));
   app.use(express.json());
   if (env.NODE_ENV !== "test") {
     app.use(morgan(env.NODE_ENV === "development" ? "dev" : "combined"));
