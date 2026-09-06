@@ -1,10 +1,14 @@
-name: CI
+name: CI/CD
 
 on:
   push:
     branches: [main]
   pull_request:
     branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   backend:
@@ -24,6 +28,12 @@ jobs:
           --health-interval 5s
           --health-timeout 5s
           --health-retries 10
+
+    env:
+      # Throwaway service container scoped to this job only — never a
+      # deploy target, so it isn't a secret to protect. Declared once here
+      # instead of repeated inline so there's a single place to change it.
+      TEST_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/college_notes?sslmode=disable
 
     steps:
       - uses: actions/checkout@v4
@@ -45,7 +55,7 @@ jobs:
       - name: Apply migrations to test database
         working-directory: db
         env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/college_notes?sslmode=disable
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
         run: npm run db:migrate
 
       - name: Install backend dependencies
@@ -60,7 +70,7 @@ jobs:
         working-directory: backend
         run: |
           cp .env.test.example .env.test
-          sed -i 's#^DATABASE_URL=.*#DATABASE_URL=postgresql://postgres:postgres@localhost:5432/college_notes?sslmode=disable#' .env.test
+          sed -i "s#^DATABASE_URL=.*#DATABASE_URL=${TEST_DATABASE_URL}#" .env.test
 
       - name: Test
         working-directory: backend
@@ -100,6 +110,54 @@ jobs:
 
       - name: Build
         working-directory: frontend
-        env:
-          VITE_API_URL: http://localhost:4000
+        # No VITE_API_URL here on purpose: this build only proves the
+        # project compiles. src/lib/api-client.ts already falls back to
+        # http://localhost:4000 when the var is unset, so nothing is
+        # hardcoded in the pipeline to get a green check here. The real
+        # value for the deployed site lives in Vercel's own project env
+        # vars and is injected by `vercel build` in deploy-frontend below.
         run: npm run build
+
+  # --- Deploy: only after both test jobs pass, only on main, only for a
+  # push (not a PR from a fork, which wouldn't have access to secrets
+  # anyway). Both jobs read every environment-specific value from GitHub
+  # Actions secrets/variables or from the target platform's own project
+  # config — nothing environment-specific is written into this file.
+  deploy-backend:
+    needs: [backend, frontend]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Trigger Render deploy
+        run: curl -sf -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+
+  deploy-frontend:
+    needs: [backend, frontend]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel project settings and env vars
+        working-directory: frontend
+        run: vercel pull --yes --environment=production --token="${{ secrets.VERCEL_TOKEN }}"
+
+      - name: Build
+        working-directory: frontend
+        run: vercel build --prod --token="${{ secrets.VERCEL_TOKEN }}"
+
+      - name: Deploy
+        working-directory: frontend
+        run: vercel deploy --prebuilt --prod --token="${{ secrets.VERCEL_TOKEN }}"

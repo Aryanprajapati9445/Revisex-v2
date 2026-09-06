@@ -4,6 +4,10 @@ services:
     runtime: node
     plan: starter
     region: oregon
+    # Deploys are triggered by .github/workflows/ci.yml's deploy-backend job
+    # (via this service's Deploy Hook URL) only after tests pass, not by
+    # every push Render sees.
+    autoDeploy: false
     # db/ is a sibling package backend/ imports by relative path
     # (backend/src/db/index.ts -> ../../../db/dist/schema/index.js), so both
     # must be built from the repo root, not from backend/ alone.

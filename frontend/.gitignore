@@ -12,6 +12,10 @@ dist
 dist-ssr
 *.local
 
+# Written by `vercel pull` / `vercel link` (see .github/workflows/ci.yml's
+# deploy-frontend job) — project linkage + pulled env vars, machine/CI-local.
+.vercel
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
