@@ -1,5 +1,18 @@
+import net from "node:net";
 import pg from "pg";
 import { env } from "./env.js";
+
+// Node's Happy Eyeballs (RFC 8305) races the DNS-resolved addresses in
+// parallel but abandons each attempt after `autoSelectFamilyAttemptTimeout`
+// (250ms default). Neon's pooler hostname resolves to both AAAA and A
+// records; on networks without IPv6 routing the AAAA attempts fail
+// instantly with ENETUNREACH, which is fine, but the real TLS/TCP round
+// trip to Neon's us-east-2 endpoint can exceed 250ms on its own — so every
+// A-record attempt was *also* getting killed as a spurious ETIMEDOUT before
+// it could finish, and the whole connection failed with an AggregateError
+// even though the host was reachable. Give attempts enough room to
+// actually complete instead of racing an unrealistically short clock.
+net.setDefaultAutoSelectFamilyAttemptTimeout(3000);
 
 const { Pool, types } = pg;
 
