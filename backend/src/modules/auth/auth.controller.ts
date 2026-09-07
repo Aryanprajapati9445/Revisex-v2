@@ -103,9 +103,12 @@ export async function googleCallback(req: Request, res: Response) {
     } else {
       res.redirect(`${env.APP_URL}/oauth/complete#pending=${result.pendingToken}`);
     }
-  } catch {
+  } catch (err) {
     // Never leak provider/error details to the browser — a generic bounce
-    // back to login with a flag the frontend turns into a toast.
+    // back to login with a flag the frontend turns into a toast. Still log
+    // server-side so the actual cause (bad state, Google API error, DB
+    // error) is visible instead of a silent 302.
+    console.error("Google OAuth callback failed", err);
     res.redirect(`${env.APP_URL}/login?error=oauth_failed`);
   }
 }
