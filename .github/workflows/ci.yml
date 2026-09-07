@@ -45,6 +45,10 @@ jobs:
             db/package-lock.json
             backend/package-lock.json
 
+      # -------------------------
+      # Database
+      # -------------------------
+
       - name: Install DB dependencies
         working-directory: db
         run: npm ci
@@ -59,11 +63,15 @@ jobs:
           DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
         run: npm run db:migrate
 
+      # -------------------------
+      # Backend
+      # -------------------------
+
       - name: Install backend dependencies
         working-directory: backend
         run: npm ci
 
-      - name: Typecheck
+      - name: Typecheck backend
         working-directory: backend
         run: npm run typecheck
 
@@ -73,13 +81,19 @@ jobs:
           cp .env.test.example .env.test
           sed -i "s#^DATABASE_URL=.*#DATABASE_URL=${TEST_DATABASE_URL}#" .env.test
 
-      - name: Test
+      - name: Test backend
         working-directory: backend
         run: npm test
 
-      - name: Build
+      - name: Build backend
         working-directory: backend
-        run: npm run build
+        run: |
+          npm run build
+          test -f dist/server.js
+
+      # -------------------------
+      # Frontend
+      # -------------------------
 
   frontend:
     runs-on: ubuntu-latest
@@ -95,25 +109,29 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Install dependencies
+      - name: Install frontend dependencies
         working-directory: frontend
         run: npm ci
 
-      - name: Lint
+      - name: Lint frontend
         working-directory: frontend
         run: npm run lint
 
-      - name: Typecheck
+      - name: Typecheck frontend
         working-directory: frontend
         run: npm run typecheck
 
-      - name: Test
+      - name: Test frontend
         working-directory: frontend
         run: npm test
 
-      - name: Build
+      - name: Build frontend
         working-directory: frontend
         run: npm run build
+
+  # -------------------------
+  # Failure Analysis
+  # -------------------------
 
   analyze-failure:
     name: Analyze CI Failure
@@ -130,6 +148,10 @@ jobs:
         uses: sensethelog/action@v1
         with:
           sensethelog-api-key: ${{ secrets.SENSETHELOG_API_KEY }}
+
+  # -------------------------
+  # Deploy Backend
+  # -------------------------
 
   deploy-backend:
     name: Deploy Backend
@@ -149,7 +171,12 @@ jobs:
 
     steps:
       - name: Deploy backend to Render
-        run: curl -sf -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+        run: |
+          curl -sf -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+
+  # -------------------------
+  # Deploy Frontend
+  # -------------------------
 
   deploy-frontend:
     name: Deploy Frontend
