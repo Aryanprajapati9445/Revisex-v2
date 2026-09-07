@@ -7,6 +7,7 @@ import { env } from "./config/env.js";
 import { checkDbConnection } from "./config/db.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import { notFound } from "./middleware/notFound.js";
+import { requestId } from "./middleware/requestId.js";
 
 import { authRouter } from "./modules/auth/auth.routes.js";
 import { programsRouter } from "./modules/programs/programs.routes.js";
@@ -30,6 +31,7 @@ export function createApp() {
 
   app.use(helmet());
   app.use(cors({ origin: allowedOrigins }));
+  app.use(requestId);
   app.use(express.json());
   if (env.NODE_ENV !== "test") {
     app.use(morgan(env.NODE_ENV === "development" ? "dev" : "combined"));

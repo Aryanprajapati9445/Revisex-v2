@@ -12,8 +12,9 @@ import {
   type JwtPayload,
   type TokenPair,
 } from "../../lib/jwt.js";
+import { wrapExternalError } from "../../lib/externalError.js";
 import { sendMail } from "../../lib/mailer.js";
-import { hashPassword, verifyPassword } from "../../lib/password.js";
+import { hashPassword, verifyPasswordTimingSafe } from "../../lib/password.js";
 import { isCheckViolation, isForeignKeyViolation, isUniqueViolation } from "../../lib/pgError.js";
 import type { User } from "../../types/index.js";
 
@@ -163,12 +164,14 @@ export async function login(email: string, password: string): Promise<{ user: Us
     [email]
   );
   const row = rows[0];
-  if (!row || !row.password_hash) {
-    throw new ApiError(401, "INVALID_CREDENTIALS", "Email or password is incorrect");
-  }
 
-  const valid = await verifyPassword(password, row.password_hash);
-  if (!valid) {
+  // Always run a bcrypt compare — on a real hash if the account exists, on
+  // a fixed dummy hash if it doesn't — so a missing account and a wrong
+  // password take the same amount of time and return the identical
+  // status/code/message. Skipping the compare for a missing account would
+  // make the two cases distinguishable by response latency alone.
+  const valid = await verifyPasswordTimingSafe(password, row?.password_hash ?? null);
+  if (!row || !row.password_hash || !valid) {
     throw new ApiError(401, "INVALID_CREDENTIALS", "Email or password is incorrect");
   }
 
@@ -251,26 +254,36 @@ interface GoogleProfile {
   name: string;
 }
 
-async function fetchGoogleProfile(code: string): Promise<GoogleProfile> {
-  const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      code,
-      client_id: env.GOOGLE_CLIENT_ID,
-      client_secret: env.GOOGLE_CLIENT_SECRET,
-      redirect_uri: env.GOOGLE_REDIRECT_URI,
-      grant_type: "authorization_code",
-    }),
-  });
-  if (!tokenRes.ok) throw new ApiError(400, "OAUTH_FAILED", "Google token exchange failed");
-  const { access_token } = (await tokenRes.json()) as { access_token: string };
+const OAUTH_FAILED = { status: 400, code: "OAUTH_FAILED", message: "Unable to sign in with Google right now. Please try again." };
 
-  const profileRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-    headers: { Authorization: `Bearer ${access_token}` },
-  });
-  if (!profileRes.ok) throw new ApiError(400, "OAUTH_FAILED", "Fetching Google profile failed");
-  return (await profileRes.json()) as GoogleProfile;
+async function fetchGoogleProfile(code: string): Promise<GoogleProfile> {
+  try {
+    const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        code,
+        client_id: env.GOOGLE_CLIENT_ID,
+        client_secret: env.GOOGLE_CLIENT_SECRET,
+        redirect_uri: env.GOOGLE_REDIRECT_URI,
+        grant_type: "authorization_code",
+      }),
+    });
+    if (!tokenRes.ok) throw new ApiError(OAUTH_FAILED.status, OAUTH_FAILED.code, OAUTH_FAILED.message);
+    const { access_token } = (await tokenRes.json()) as { access_token: string };
+
+    const profileRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+      headers: { Authorization: `Bearer ${access_token}` },
+    });
+    if (!profileRes.ok) throw new ApiError(OAUTH_FAILED.status, OAUTH_FAILED.code, OAUTH_FAILED.message);
+    return (await profileRes.json()) as GoogleProfile;
+  } catch (err) {
+    // Re-throw our own sanitized ApiErrors as-is; anything else (DNS/network
+    // failure, a malformed JSON body, etc.) is an unsanitized error from the
+    // fetch layer and must be mapped before it can reach the client.
+    if (err instanceof ApiError) throw err;
+    throw wrapExternalError(err, { category: "google_oauth", ...OAUTH_FAILED });
+  }
 }
 
 export type GoogleCallbackResult = { kind: "session"; tokens: TokenPair } | { kind: "pending"; pendingToken: string };

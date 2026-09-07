@@ -3,6 +3,7 @@ import { afterAll, afterEach, beforeEach, describe, expect, it, vi } from "vites
 import { createApp } from "../../src/app.js";
 import { pool } from "../../src/config/db.js";
 import { signOAuthPending } from "../../src/lib/jwt.js";
+import { __resetRateLimitsForTests } from "../../src/middleware/rateLimit.js";
 import { truncateAll } from "../helpers/db.js";
 import { createBranch, createProgram, createUserFixture } from "../helpers/fixtures.js";
 
@@ -14,6 +15,7 @@ const app = createApp();
 beforeEach(async () => {
   await truncateAll();
   mailerMock.mockClear();
+  __resetRateLimitsForTests();
 });
 
 afterAll(async () => {
@@ -508,5 +510,77 @@ describe("POST /api/auth/google/complete", () => {
       .send({ pendingToken: "garbage", branch_id: "00000000-0000-0000-0000-000000000000" });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe("INVALID_TOKEN");
+  });
+});
+
+describe("security: credential handling and error sanitization", () => {
+  it("never returns the password/password_hash in a successful login response", async () => {
+    const program = await createProgram();
+    const branch = await createBranch(program.id);
+    await createUserFixture({ role: "student", branchId: branch.id, email: "secret@test.edu", password: "supersecretpw1" });
+
+    const res = await request(app).post("/api/auth/login").send({ email: "secret@test.edu", password: "supersecretpw1" });
+
+    expect(res.status).toBe(200);
+    const raw = JSON.stringify(res.body);
+    expect(raw).not.toContain("supersecretpw1");
+    expect(raw).not.toContain("password_hash");
+    expect(res.body.data.user).not.toHaveProperty("password");
+    expect(res.body.data.user).not.toHaveProperty("password_hash");
+  });
+
+  it("returns byte-identical error bodies for an unknown email and a wrong password (no enumeration)", async () => {
+    const program = await createProgram();
+    const branch = await createBranch(program.id);
+    await createUserFixture({ role: "student", branchId: branch.id, email: "known@test.edu", password: "rightpassword1" });
+
+    const unknown = await request(app).post("/api/auth/login").send({ email: "nobody@test.edu", password: "whatever123" });
+    const wrong = await request(app).post("/api/auth/login").send({ email: "known@test.edu", password: "wrongpassword" });
+
+    expect(unknown.status).toBe(wrong.status);
+    expect(unknown.body.error.code).toBe(wrong.body.error.code);
+    expect(unknown.body.error.message).toBe(wrong.body.error.message);
+  });
+
+  it("locks out login attempts with 429 after repeated failures against the same email", async () => {
+    const program = await createProgram();
+    const branch = await createBranch(program.id);
+    await createUserFixture({ role: "student", branchId: branch.id, email: "bruteforce@test.edu", password: "correcthorse1" });
+
+    let last;
+    for (let i = 0; i < 4; i++) {
+      last = await request(app).post("/api/auth/login").send({ email: "bruteforce@test.edu", password: "wrongwrong" });
+      expect(last.body.error.code).toBe("INVALID_CREDENTIALS");
+    }
+
+    const locked = await request(app).post("/api/auth/login").send({ email: "bruteforce@test.edu", password: "wrongwrong" });
+    expect(locked.status).toBe(429);
+    expect(locked.body.error.code).toBe("RATE_LIMITED");
+
+    // A correct password submitted while locked out is still refused —
+    // the lockout is time-based, not bypassable by finally guessing right.
+    const stillLocked = await request(app)
+      .post("/api/auth/login")
+      .send({ email: "bruteforce@test.edu", password: "correcthorse1" });
+    expect(stillLocked.status).toBe(429);
+  });
+
+  it("includes a requestId in every error response for support correlation", async () => {
+    const res = await request(app).post("/api/auth/login").send({ email: "nobody@test.edu", password: "whatever" });
+    expect(typeof res.body.error.requestId).toBe("string");
+    expect(res.body.error.requestId.length).toBeGreaterThan(0);
+  });
+
+  it("never leaks a raw Google OAuth network failure to the client", async () => {
+    const stateRes = await request(app).get("/api/auth/google");
+    const state = new URL(stateRes.headers.location).searchParams.get("state")!;
+    vi.spyOn(global, "fetch").mockRejectedValueOnce(new Error("getaddrinfo ENOTFOUND oauth2.googleapis.com"));
+
+    const res = await request(app).get(`/api/auth/google/callback?code=fake-code&state=${state}`);
+
+    expect(res.status).toBe(302);
+    expect(res.headers.location).toContain("/login?error=oauth_failed");
+    expect(res.headers.location).not.toContain("ENOTFOUND");
+    vi.restoreAllMocks();
   });
 });

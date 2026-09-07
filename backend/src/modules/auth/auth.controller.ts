@@ -2,7 +2,9 @@ import type { NextFunction, Request, Response } from "express";
 import { z } from "zod";
 import { env } from "../../config/env.js";
 import { ApiError } from "../../lib/apiError.js";
+import { logger } from "../../lib/logger.js";
 import { sendSuccess } from "../../lib/response.js";
+import { loginThrottleRecordFailure, loginThrottleRecordSuccess } from "../../middleware/rateLimit.js";
 import * as authService from "./auth.service.js";
 
 const registerSchema = z.object({
@@ -106,9 +108,9 @@ export async function googleCallback(req: Request, res: Response) {
   } catch (err) {
     // Never leak provider/error details to the browser — a generic bounce
     // back to login with a flag the frontend turns into a toast. Still log
-    // server-side so the actual cause (bad state, Google API error, DB
-    // error) is visible instead of a silent 302.
-    console.error("Google OAuth callback failed", err);
+    // server-side (redacted, with the request ID) so the actual cause (bad
+    // state, Google API error, DB error) is visible instead of a silent 302.
+    logger.error("google_oauth_callback_failed", { cause: err });
     res.redirect(`${env.APP_URL}/login?error=oauth_failed`);
   }
 }
@@ -127,8 +129,12 @@ export async function login(req: Request, res: Response, next: NextFunction) {
   try {
     const { email, password } = loginSchema.parse(req.body);
     const { user, tokens } = await authService.login(email, password);
+    loginThrottleRecordSuccess(req);
     sendSuccess(res, { user, ...tokens });
   } catch (err) {
+    if (err instanceof ApiError && err.code === "INVALID_CREDENTIALS") {
+      loginThrottleRecordFailure(req);
+    }
     next(err);
   }
 }

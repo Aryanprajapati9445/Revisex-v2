@@ -11,7 +11,7 @@ describe("stub routers use the standard error envelope", () => {
     expect(res.status).toBe(501);
     expect(res.body).toEqual({
       success: false,
-      error: { code: "NOT_IMPLEMENTED", message: expect.any(String) },
+      error: { code: "NOT_IMPLEMENTED", message: expect.any(String), requestId: expect.any(String) },
     });
   });
 });

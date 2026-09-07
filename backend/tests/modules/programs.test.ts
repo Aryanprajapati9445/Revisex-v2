@@ -46,7 +46,7 @@ describe("GET /api/programs", () => {
     expect(res.status).toBe(422);
     expect(res.body).toEqual({
       success: false,
-      error: { code: "VALIDATION_ERROR", message: expect.any(String) },
+      error: { code: "VALIDATION_ERROR", message: expect.any(String), requestId: expect.any(String) },
     });
   });
 });
@@ -56,7 +56,10 @@ describe("GET /api/programs/:id", () => {
     const res = await request(app).get("/api/programs/00000000-0000-0000-0000-000000000000");
 
     expect(res.status).toBe(404);
-    expect(res.body).toEqual({ success: false, error: { code: "NOT_FOUND", message: expect.any(String) } });
+    expect(res.body).toEqual({
+      success: false,
+      error: { code: "NOT_FOUND", message: expect.any(String), requestId: expect.any(String) },
+    });
   });
 
   it("returns 400 for a malformed id", async () => {
@@ -85,6 +88,9 @@ describe("unmatched route", () => {
     const res = await request(app).get("/api/does-not-exist");
 
     expect(res.status).toBe(404);
-    expect(res.body).toEqual({ success: false, error: { code: "NOT_FOUND", message: expect.any(String) } });
+    expect(res.body).toEqual({
+      success: false,
+      error: { code: "NOT_FOUND", message: expect.any(String), requestId: expect.any(String) },
+    });
   });
 });
