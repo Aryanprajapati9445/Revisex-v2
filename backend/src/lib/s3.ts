@@ -19,3 +19,24 @@ export async function getPresignedGetUrl(key: string, expiresInSeconds = 300): P
   const command = new GetObjectCommand({ Bucket: env.AWS_S3_BUCKET, Key: key });
   return getSignedUrl(s3Client, command, { expiresIn: expiresInSeconds });
 }
+
+/**
+ * Same as getPresignedGetUrl, but overrides the response headers so the
+ * browser renders the object inline (in an <iframe>/<img>) instead of
+ * prompting a download — the override lives on the presigned request, not
+ * on the stored object, so it doesn't affect getPresignedGetUrl callers.
+ */
+export async function getPresignedInlineUrl(
+  key: string,
+  contentType: string,
+  filename: string,
+  expiresInSeconds = 300
+): Promise<string> {
+  const command = new GetObjectCommand({
+    Bucket: env.AWS_S3_BUCKET,
+    Key: key,
+    ResponseContentType: contentType,
+    ResponseContentDisposition: `inline; filename="${filename.replace(/["\\]/g, "_")}"`,
+  });
+  return getSignedUrl(s3Client, command, { expiresIn: expiresInSeconds });
+}

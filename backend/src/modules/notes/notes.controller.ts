@@ -240,35 +240,69 @@ export async function completeFile(req: Request, res: Response, next: NextFuncti
   }
 }
 
+/**
+ * Shared by downloadFile and previewFile: resolves the note (visibility
+ * rules per loadNoteOr404) and the specific uploaded file under it, 404ing
+ * either way a caller shouldn't be able to distinguish "wrong id" from
+ * "not allowed" (same reasoning as updateNote/deleteNote above).
+ */
+async function loadAccessibleFile(req: Request): Promise<NoteFile> {
+  const note = await loadNoteOr404(req.params.id);
+
+  if (note.status !== "approved") {
+    const isOwner = req.user?.id === note.uploader_id;
+    const isPrivileged = !!req.user && isPrivilegedRole(req.user.role);
+
+    if (!isOwner && !isPrivileged) {
+      throw new ApiError(404, "NOT_FOUND", "Note not found");
+    }
+
+    // For privileged roles (non-owner), check scope
+    if (isPrivileged && !isOwner) {
+      const inScope = await isNoteInScope(req.user!, note.id);
+      if (!inScope) throw new ApiError(404, "NOT_FOUND", "Note not found");
+    }
+  }
+
+  const fileIdResult = idParamSchema.safeParse(req.params.fileId);
+  if (!fileIdResult.success) throw new ApiError(400, "VALIDATION_ERROR", "File id must be a UUID");
+
+  const file: NoteFile | null = await notesService.getFileById(fileIdResult.data);
+  if (!file || file.note_id !== note.id || file.upload_status !== "uploaded") {
+    throw new ApiError(404, "NOT_FOUND", "File not found");
+  }
+
+  return file;
+}
+
 export async function downloadFile(req: Request, res: Response, next: NextFunction) {
   try {
-    const note = await loadNoteOr404(req.params.id);
-
-    if (note.status !== "approved") {
-      const isOwner = req.user?.id === note.uploader_id;
-      const isPrivileged = !!req.user && isPrivilegedRole(req.user.role);
-
-      if (!isOwner && !isPrivileged) {
-        throw new ApiError(404, "NOT_FOUND", "Note not found");
-      }
-
-      // For privileged roles (non-owner), check scope
-      if (isPrivileged && !isOwner) {
-        const inScope = await isNoteInScope(req.user!, note.id);
-        if (!inScope) throw new ApiError(404, "NOT_FOUND", "Note not found");
-      }
-    }
-
-    const fileIdResult = idParamSchema.safeParse(req.params.fileId);
-    if (!fileIdResult.success) throw new ApiError(400, "VALIDATION_ERROR", "File id must be a UUID");
-
-    const file: NoteFile | null = await notesService.getFileById(fileIdResult.data);
-    if (!file || file.note_id !== note.id || file.upload_status !== "uploaded") {
-      throw new ApiError(404, "NOT_FOUND", "File not found");
-    }
-
+    const file = await loadAccessibleFile(req);
     const url = await notesService.getDownloadUrl(file.s3_key);
-    await notesService.incrementDownloadCount(note.id);
+    await notesService.incrementDownloadCount(file.note_id);
+    sendSuccess(res, { url });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function previewFile(req: Request, res: Response, next: NextFunction) {
+  try {
+    const file = await loadAccessibleFile(req);
+
+    // Deliberately does NOT call incrementDownloadCount — opening a preview
+    // isn't a download. Size is re-checked here (not just client-side) so a
+    // direct API call can't get a working inline URL for a file the UI would
+    // have refused to preview — see PREVIEW_MAX_BYTES in notes.service.ts.
+    if (file.size_bytes !== null && file.size_bytes > notesService.PREVIEW_MAX_BYTES) {
+      throw new ApiError(
+        422,
+        "FILE_TOO_LARGE",
+        `This file is too large to preview (max ${Math.round(notesService.PREVIEW_MAX_BYTES / (1024 * 1024))}MB). Download it instead.`
+      );
+    }
+
+    const url = await notesService.getPreviewUrl(file);
     sendSuccess(res, { url });
   } catch (err) {
     next(err);

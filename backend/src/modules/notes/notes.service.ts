@@ -2,9 +2,17 @@ import { pool } from "../../config/db.js";
 import { ApiError } from "../../lib/apiError.js";
 import type { AuthUser } from "../../middleware/auth.js";
 import type { Note, NoteType, NoteStatus, NoteFile } from "../../types/index.js";
-import { buildNoteFileKey, getPresignedGetUrl, getPresignedPutUrl } from "../../lib/s3.js";
+import { buildNoteFileKey, getPresignedGetUrl, getPresignedInlineUrl, getPresignedPutUrl } from "../../lib/s3.js";
 import { env } from "../../config/env.js";
 import { isCheckViolation, isForeignKeyViolation } from "../../lib/pgError.js";
+
+// Kept in sync with frontend/src/lib/constants.ts's PREVIEW_MAX_BYTES — the
+// frontend gates on this first (so it never even requests a preview URL for
+// an oversized file, and never hands the browser something large enough to
+// choke rendering an <img>/<iframe> on), and previewFile in
+// notes.controller.ts re-checks it server-side so a direct API call can't
+// bypass that gate.
+export const PREVIEW_MAX_BYTES = 20 * 1024 * 1024; // 20MB
 
 const NOTE_COLUMNS = `id, subject_id, uploader_id, title, description, note_type, exam_year,
   status, reviewed_by, reviewed_at, rejection_reason, download_count, created_at, updated_at`;
@@ -209,6 +217,17 @@ export async function completeFileUpload(fileId: string, sizeBytes: number): Pro
 
 export async function getDownloadUrl(s3Key: string): Promise<string> {
   return getPresignedGetUrl(s3Key);
+}
+
+/**
+ * Unlike getDownloadUrl, forces Content-Disposition: inline (and the file's
+ * real Content-Type) on the presigned URL, so the browser renders it in the
+ * <iframe>/<img> the frontend embeds it in instead of offering a save-file
+ * dialog — S3 otherwise serves whatever Content-Type/-Disposition was set at
+ * upload time, which callers can't rely on.
+ */
+export async function getPreviewUrl(file: NoteFile): Promise<string> {
+  return getPresignedInlineUrl(file.s3_key, file.mime_type, file.original_filename);
 }
 
 export async function incrementDownloadCount(noteId: string): Promise<void> {

@@ -41,3 +41,15 @@ export function useDownloadFile(noteId: string) {
     },
   });
 }
+
+/**
+ * Fetches a short-lived presigned URL for rendering a file inline (in an
+ * <img>/<iframe>) rather than downloading it. Unlike useDownloadFile, this
+ * has no side effect on the backend (opening a preview isn't a download),
+ * so there's nothing to invalidate here.
+ */
+export function usePreviewFile(noteId: string) {
+  return useMutation({
+    mutationFn: (fileId: string) => api.get<{ url: string }>(`/api/notes/${noteId}/files/${fileId}/preview`),
+  });
+}

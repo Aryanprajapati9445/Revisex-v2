@@ -272,6 +272,71 @@ describe("GET /api/notes/:id/files/:fileId/download", () => {
   });
 });
 
+describe("GET /api/notes/:id/files/:fileId/preview", () => {
+  it("returns a presigned inline URL without incrementing download_count", async () => {
+    const { subject, student } = await setup();
+    const note = await createPendingNote(subject.id, student.id);
+
+    const requestRes = await request(app)
+      .post(`/api/notes/${note.id}/files`)
+      .set("Authorization", authHeader(student))
+      .send({ files: [{ original_filename: "lecture1.pdf", mime_type: "application/pdf" }] });
+    const fileId = requestRes.body.data[0].file.id;
+
+    await request(app)
+      .post(`/api/notes/${note.id}/files/${fileId}/complete`)
+      .set("Authorization", authHeader(student))
+      .send({ size_bytes: 100 });
+
+    await pool.query(`UPDATE notes SET status = 'approved', reviewed_at = now() WHERE id = $1`, [note.id]);
+
+    const previewRes = await request(app).get(`/api/notes/${note.id}/files/${fileId}/preview`);
+
+    expect(previewRes.status).toBe(200);
+    expect(typeof previewRes.body.data.url).toBe("string");
+
+    const { rows } = await pool.query(`SELECT download_count FROM notes WHERE id = $1`, [note.id]);
+    expect(rows[0].download_count).toBe(0);
+  });
+
+  it("rejects previewing a file over PREVIEW_MAX_BYTES with 422, even via a direct API call", async () => {
+    const { subject, student } = await setup();
+    const note = await createPendingNote(subject.id, student.id);
+
+    const requestRes = await request(app)
+      .post(`/api/notes/${note.id}/files`)
+      .set("Authorization", authHeader(student))
+      .send({ files: [{ original_filename: "huge.pdf", mime_type: "application/pdf" }] });
+    const fileId = requestRes.body.data[0].file.id;
+
+    await request(app)
+      .post(`/api/notes/${note.id}/files/${fileId}/complete`)
+      .set("Authorization", authHeader(student))
+      .send({ size_bytes: 25 * 1024 * 1024 }); // 25MB > 20MB PREVIEW_MAX_BYTES
+
+    await pool.query(`UPDATE notes SET status = 'approved', reviewed_at = now() WHERE id = $1`, [note.id]);
+
+    const previewRes = await request(app).get(`/api/notes/${note.id}/files/${fileId}/preview`);
+
+    expect(previewRes.status).toBe(422);
+    expect(previewRes.body.error.code).toBe("FILE_TOO_LARGE");
+  });
+
+  it("hides the preview for a pending note from an anonymous request", async () => {
+    const { subject, student } = await setup();
+    const note = await createPendingNote(subject.id, student.id);
+
+    const requestRes = await request(app)
+      .post(`/api/notes/${note.id}/files`)
+      .set("Authorization", authHeader(student))
+      .send({ files: [{ original_filename: "lecture1.pdf", mime_type: "application/pdf" }] });
+    const fileId = requestRes.body.data[0].file.id;
+
+    const res = await request(app).get(`/api/notes/${note.id}/files/${fileId}/preview`);
+    expect(res.status).toBe(404);
+  });
+});
+
 describe("GET /api/notes/:id/files", () => {
   it("lists uploaded files for an approved note anonymously", async () => {
     const { subject, student } = await setup();

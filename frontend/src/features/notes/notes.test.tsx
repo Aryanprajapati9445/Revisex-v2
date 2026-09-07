@@ -226,6 +226,89 @@ describe("NoteDetailPage", () => {
     open.mockRestore();
   });
 
+  it("previews a PDF inline in an iframe without triggering a download", async () => {
+    const open = vi.spyOn(window, "open").mockImplementation(() => null);
+    server.use(
+      http.get(`${API}/api/notes/n1`, () => HttpResponse.json({ success: true, data: note })),
+      http.get(`${API}/api/notes/n1/files`, () => HttpResponse.json({ success: true, data: [file] })),
+      http.get(`${API}/api/notes/n1/files/f1/preview`, () =>
+        HttpResponse.json({ success: true, data: { url: "https://s3.example/signed-preview" } })
+      ),
+      http.get(`${API}/api/subjects/s1`, () => HttpResponse.json({ success: true, data: subject })),
+      http.get(`${API}/api/branches/b1`, () => HttpResponse.json({ success: true, data: branch })),
+      http.get(`${API}/api/programs/p1`, () => HttpResponse.json({ success: true, data: program }))
+    );
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/notes/:noteId" element={<NoteDetailPage />} />
+      </Routes>,
+      { route: "/notes/n1" }
+    );
+
+    await userEvent.click(await screen.findByRole("button", { name: /preview/i }));
+
+    const iframe = await screen.findByTitle("lecture.pdf");
+    expect(iframe).toHaveAttribute("src", "https://s3.example/signed-preview");
+    expect(open).not.toHaveBeenCalled();
+    open.mockRestore();
+  });
+
+  it("shows a too-large message instead of fetching a preview for an oversized file", async () => {
+    const hugeFile = { ...file, id: "f2", original_filename: "scan.pdf", size_bytes: 30 * 1024 * 1024 };
+    let previewRequested = false;
+    server.use(
+      http.get(`${API}/api/notes/n1`, () => HttpResponse.json({ success: true, data: note })),
+      http.get(`${API}/api/notes/n1/files`, () => HttpResponse.json({ success: true, data: [hugeFile] })),
+      http.get(`${API}/api/notes/n1/files/f2/preview`, () => {
+        previewRequested = true;
+        return HttpResponse.json({ success: true, data: { url: "https://s3.example/signed-preview" } });
+      }),
+      http.get(`${API}/api/subjects/s1`, () => HttpResponse.json({ success: true, data: subject })),
+      http.get(`${API}/api/branches/b1`, () => HttpResponse.json({ success: true, data: branch })),
+      http.get(`${API}/api/programs/p1`, () => HttpResponse.json({ success: true, data: program }))
+    );
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/notes/:noteId" element={<NoteDetailPage />} />
+      </Routes>,
+      { route: "/notes/n1" }
+    );
+
+    await userEvent.click(await screen.findByRole("button", { name: /preview/i }));
+
+    expect(await screen.findByText(/too large to preview/i)).toBeInTheDocument();
+    expect(previewRequested).toBe(false);
+  });
+
+  it("shows a no-preview message for an unsupported file type", async () => {
+    const docFile = {
+      ...file,
+      id: "f3",
+      original_filename: "notes.docx",
+      mime_type: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    };
+    server.use(
+      http.get(`${API}/api/notes/n1`, () => HttpResponse.json({ success: true, data: note })),
+      http.get(`${API}/api/notes/n1/files`, () => HttpResponse.json({ success: true, data: [docFile] })),
+      http.get(`${API}/api/subjects/s1`, () => HttpResponse.json({ success: true, data: subject })),
+      http.get(`${API}/api/branches/b1`, () => HttpResponse.json({ success: true, data: branch })),
+      http.get(`${API}/api/programs/p1`, () => HttpResponse.json({ success: true, data: program }))
+    );
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/notes/:noteId" element={<NoteDetailPage />} />
+      </Routes>,
+      { route: "/notes/n1" }
+    );
+
+    await userEvent.click(await screen.findByRole("button", { name: /preview/i }));
+
+    expect(await screen.findByText(/no preview available/i)).toBeInTheDocument();
+  });
+
   it("renders the neutral not-found panel for a masked note", async () => {
     server.use(
       http.get(`${API}/api/notes/n1`, () =>
