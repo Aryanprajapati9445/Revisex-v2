@@ -309,6 +309,60 @@ describe("NoteDetailPage", () => {
     expect(await screen.findByText(/no preview available/i)).toBeInTheDocument();
   });
 
+  it("previews an image file inline in an img tag", async () => {
+    const imageFile = { ...file, id: "f4", original_filename: "diagram.png", mime_type: "image/png" };
+    server.use(
+      http.get(`${API}/api/notes/n1`, () => HttpResponse.json({ success: true, data: note })),
+      http.get(`${API}/api/notes/n1/files`, () => HttpResponse.json({ success: true, data: [imageFile] })),
+      http.get(`${API}/api/notes/n1/files/f4/preview`, () =>
+        HttpResponse.json({ success: true, data: { url: "https://s3.example/signed-image" } })
+      ),
+      http.get(`${API}/api/subjects/s1`, () => HttpResponse.json({ success: true, data: subject })),
+      http.get(`${API}/api/branches/b1`, () => HttpResponse.json({ success: true, data: branch })),
+      http.get(`${API}/api/programs/p1`, () => HttpResponse.json({ success: true, data: program }))
+    );
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/notes/:noteId" element={<NoteDetailPage />} />
+      </Routes>,
+      { route: "/notes/n1" }
+    );
+
+    await userEvent.click(await screen.findByRole("button", { name: /preview/i }));
+
+    const img = await screen.findByAltText("diagram.png");
+    expect(img).toHaveAttribute("src", "https://s3.example/signed-image");
+  });
+
+  it("shows a couldn't-load-preview message when the preview request fails", async () => {
+    server.use(
+      http.get(`${API}/api/notes/n1`, () => HttpResponse.json({ success: true, data: note })),
+      http.get(`${API}/api/notes/n1/files`, () => HttpResponse.json({ success: true, data: [file] })),
+      http.get(`${API}/api/notes/n1/files/f1/preview`, () =>
+        HttpResponse.json(
+          { success: false, error: { code: "FILE_TOO_LARGE", message: "This file is too large to preview." } },
+          { status: 422 }
+        )
+      ),
+      http.get(`${API}/api/subjects/s1`, () => HttpResponse.json({ success: true, data: subject })),
+      http.get(`${API}/api/branches/b1`, () => HttpResponse.json({ success: true, data: branch })),
+      http.get(`${API}/api/programs/p1`, () => HttpResponse.json({ success: true, data: program }))
+    );
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/notes/:noteId" element={<NoteDetailPage />} />
+      </Routes>,
+      { route: "/notes/n1" }
+    );
+
+    await userEvent.click(await screen.findByRole("button", { name: /preview/i }));
+
+    expect(await screen.findByText(/couldn't load preview/i)).toBeInTheDocument();
+    expect(screen.getByText(/this file is too large to preview\./i)).toBeInTheDocument();
+  });
+
   it("renders the neutral not-found panel for a masked note", async () => {
     server.use(
       http.get(`${API}/api/notes/n1`, () =>

@@ -335,6 +335,98 @@ describe("GET /api/notes/:id/files/:fileId/preview", () => {
     const res = await request(app).get(`/api/notes/${note.id}/files/${fileId}/preview`);
     expect(res.status).toBe(404);
   });
+
+  it("lets the owner preview their own pending note's file", async () => {
+    const { subject, student } = await setup();
+    const note = await createPendingNote(subject.id, student.id);
+
+    const requestRes = await request(app)
+      .post(`/api/notes/${note.id}/files`)
+      .set("Authorization", authHeader(student))
+      .send({ files: [{ original_filename: "lecture1.pdf", mime_type: "application/pdf" }] });
+    const fileId = requestRes.body.data[0].file.id;
+
+    await request(app)
+      .post(`/api/notes/${note.id}/files/${fileId}/complete`)
+      .set("Authorization", authHeader(student))
+      .send({ size_bytes: 100 });
+
+    const res = await request(app)
+      .get(`/api/notes/${note.id}/files/${fileId}/preview`)
+      .set("Authorization", authHeader(student));
+
+    expect(res.status).toBe(200);
+    expect(typeof res.body.data.url).toBe("string");
+  });
+
+  it("lets an in-scope branch_admin preview a pending note's file", async () => {
+    const { subject, student, branchAdmin } = await setup();
+    const note = await createPendingNote(subject.id, student.id);
+
+    const requestRes = await request(app)
+      .post(`/api/notes/${note.id}/files`)
+      .set("Authorization", authHeader(student))
+      .send({ files: [{ original_filename: "lecture1.pdf", mime_type: "application/pdf" }] });
+    const fileId = requestRes.body.data[0].file.id;
+
+    await request(app)
+      .post(`/api/notes/${note.id}/files/${fileId}/complete`)
+      .set("Authorization", authHeader(student))
+      .send({ size_bytes: 100 });
+
+    const res = await request(app)
+      .get(`/api/notes/${note.id}/files/${fileId}/preview`)
+      .set("Authorization", authHeader(branchAdmin));
+
+    expect(res.status).toBe(200);
+  });
+
+  it("masks an out-of-scope branch_admin's preview attempt as 404", async () => {
+    const { subject, student, otherBranchAdmin } = await setup();
+    const note = await createPendingNote(subject.id, student.id);
+
+    const requestRes = await request(app)
+      .post(`/api/notes/${note.id}/files`)
+      .set("Authorization", authHeader(student))
+      .send({ files: [{ original_filename: "lecture1.pdf", mime_type: "application/pdf" }] });
+    const fileId = requestRes.body.data[0].file.id;
+
+    await request(app)
+      .post(`/api/notes/${note.id}/files/${fileId}/complete`)
+      .set("Authorization", authHeader(student))
+      .send({ size_bytes: 100 });
+
+    const res = await request(app)
+      .get(`/api/notes/${note.id}/files/${fileId}/preview`)
+      .set("Authorization", authHeader(otherBranchAdmin));
+
+    expect(res.status).toBe(404);
+  });
+
+  it("404s previewing a file that was never completed (still pending upload)", async () => {
+    const { subject, student } = await setup();
+    const note = await createPendingNote(subject.id, student.id);
+
+    const requestRes = await request(app)
+      .post(`/api/notes/${note.id}/files`)
+      .set("Authorization", authHeader(student))
+      .send({ files: [{ original_filename: "lecture1.pdf", mime_type: "application/pdf" }] });
+    const fileId = requestRes.body.data[0].file.id;
+
+    await pool.query(`UPDATE notes SET status = 'approved', reviewed_at = now() WHERE id = $1`, [note.id]);
+
+    const res = await request(app).get(`/api/notes/${note.id}/files/${fileId}/preview`);
+    expect(res.status).toBe(404);
+  });
+
+  it("400s previewing with a non-UUID fileId", async () => {
+    const { subject, student } = await setup();
+    const note = await createPendingNote(subject.id, student.id);
+    await pool.query(`UPDATE notes SET status = 'approved', reviewed_at = now() WHERE id = $1`, [note.id]);
+
+    const res = await request(app).get(`/api/notes/${note.id}/files/not-a-uuid/preview`);
+    expect(res.status).toBe(400);
+  });
 });
 
 describe("GET /api/notes/:id/files", () => {
