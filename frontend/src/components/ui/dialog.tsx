@@ -104,7 +104,13 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex flex-col gap-2 text-center sm:text-left", className)}
+      // min-w-0: DialogContent is a grid container, and a grid item's default
+      // min-width is auto (its content's intrinsic size), not 0 — an
+      // unbreakable long string (e.g. a filename with no spaces) inside it
+      // will force the whole dialog wider rather than let `truncate` on a
+      // child (DialogTitle) do anything, unless the item can shrink below
+      // that intrinsic width.
+      className={cn("flex min-w-0 flex-col gap-2 text-center sm:text-left", className)}
       {...props}
     />
   )

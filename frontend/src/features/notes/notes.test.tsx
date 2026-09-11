@@ -286,6 +286,41 @@ describe("NoteDetailPage", () => {
     await waitFor(() => expect(previewButton).toHaveFocus());
   });
 
+  it("keeps the dialog header shrinkable so a long unbroken filename can truncate", async () => {
+    // DialogContent is `display: grid`, and a grid item's default min-width
+    // is its content's intrinsic size, not 0 — an unbreakable string (no
+    // spaces, like a long filename) would force the whole dialog wider
+    // instead of letting `truncate` do anything, unless the header can
+    // shrink below that intrinsic width. jsdom doesn't run real layout, so
+    // this can't assert the visual result (verified separately via
+    // screenshot), but it guards the specific class that makes it possible.
+    const longName = "L".repeat(251) + ".pdf";
+    const longFile = { ...file, id: "f5", original_filename: longName };
+    server.use(
+      http.get(`${API}/api/notes/n1`, () => HttpResponse.json({ success: true, data: note })),
+      http.get(`${API}/api/notes/n1/files`, () => HttpResponse.json({ success: true, data: [longFile] })),
+      http.get(`${API}/api/notes/n1/files/f5/preview`, () =>
+        HttpResponse.json({ success: true, data: { url: "https://s3.example/signed-preview" } })
+      ),
+      http.get(`${API}/api/subjects/s1`, () => HttpResponse.json({ success: true, data: subject })),
+      http.get(`${API}/api/branches/b1`, () => HttpResponse.json({ success: true, data: branch })),
+      http.get(`${API}/api/programs/p1`, () => HttpResponse.json({ success: true, data: program }))
+    );
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/notes/:noteId" element={<NoteDetailPage />} />
+      </Routes>,
+      { route: "/notes/n1" }
+    );
+
+    await userEvent.click(await screen.findByRole("button", { name: /preview/i }));
+    const title = await screen.findByRole("heading", { name: longName });
+
+    expect(title).toHaveClass("truncate");
+    expect(title.closest('[data-slot="dialog-header"]')).toHaveClass("min-w-0");
+  });
+
   it("shows a too-large message instead of fetching a preview for an oversized file", async () => {
     const hugeFile = { ...file, id: "f2", original_filename: "scan.pdf", size_bytes: 30 * 1024 * 1024 };
     let previewRequested = false;

@@ -6,6 +6,7 @@ import { createApp } from "../../src/app.js";
 import { s3Client } from "../../src/lib/s3.js";
 import { signAccessToken } from "../../src/lib/jwt.js";
 import { pool } from "../../src/config/db.js";
+import { __resetRateLimitsForTests } from "../../src/middleware/rateLimit.js";
 import { truncateAll } from "../helpers/db.js";
 import { createBranch, createProgram, createSubject, createUserFixture } from "../helpers/fixtures.js";
 
@@ -27,6 +28,7 @@ beforeEach(async () => {
   s3Mock.reset();
   s3Mock.on(PutObjectCommand).resolves({});
   s3Mock.on(GetObjectCommand).resolves({});
+  __resetRateLimitsForTests();
 });
 
 afterAll(async () => {
@@ -455,6 +457,37 @@ describe("GET /api/notes/:id/files/:fileId/preview", () => {
 
     const res = await request(app).get(`/api/notes/${note.id}/files/not-a-uuid/preview`);
     expect(res.status).toBe(400);
+  });
+
+  it("rate limits repeated preview requests from the same caller", async () => {
+    const { subject, student } = await setup();
+    const note = await createPendingNote(subject.id, student.id);
+
+    const requestRes = await request(app)
+      .post(`/api/notes/${note.id}/files`)
+      .set("Authorization", authHeader(student))
+      .send({ files: [{ original_filename: "lecture1.pdf", mime_type: "application/pdf" }] });
+    const fileId = requestRes.body.data[0].file.id;
+
+    await request(app)
+      .post(`/api/notes/${note.id}/files/${fileId}/complete`)
+      .set("Authorization", authHeader(student))
+      .send({ size_bytes: 100 });
+
+    await pool.query(`UPDATE notes SET status = 'approved', reviewed_at = now() WHERE id = $1`, [note.id]);
+
+    // The limit (120/5min, see notes.routes.ts) exists to blunt UUID
+    // enumeration against the masked-404 behavior, not to throttle normal
+    // browsing — confirm it actually fires rather than only existing on
+    // paper, and that a legitimate burst under the limit is unaffected.
+    for (let i = 0; i < 120; i++) {
+      const res = await request(app).get(`/api/notes/${note.id}/files/${fileId}/preview`);
+      expect(res.status).toBe(200);
+    }
+
+    const limited = await request(app).get(`/api/notes/${note.id}/files/${fileId}/preview`);
+    expect(limited.status).toBe(429);
+    expect(limited.body.error.code).toBe("RATE_LIMITED");
   });
 });
 
