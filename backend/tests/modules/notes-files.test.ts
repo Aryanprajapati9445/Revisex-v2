@@ -82,6 +82,35 @@ describe("POST /api/notes/:id/files", () => {
 
     expect(res.status).toBe(403);
   });
+
+  it("lets the owner add a second batch of files to the same note without colliding on sort_order", async () => {
+    const { subject, student } = await setup();
+    const note = await createPendingNote(subject.id, student.id);
+
+    const first = await request(app)
+      .post(`/api/notes/${note.id}/files`)
+      .set("Authorization", authHeader(student))
+      .send({ files: [{ original_filename: "a.pdf", mime_type: "application/pdf" }] });
+    expect(first.status).toBe(201);
+
+    const second = await request(app)
+      .post(`/api/notes/${note.id}/files`)
+      .set("Authorization", authHeader(student))
+      .send({ files: [{ original_filename: "b.pdf", mime_type: "application/pdf" }, { original_filename: "c.pdf", mime_type: "application/pdf" }] });
+
+    expect(second.status).toBe(201);
+    expect(second.body.data).toHaveLength(2);
+
+    const { rows } = await pool.query(
+      `SELECT original_filename, sort_order FROM files WHERE note_id = $1 ORDER BY sort_order`,
+      [note.id]
+    );
+    expect(rows).toEqual([
+      { original_filename: "a.pdf", sort_order: 0 },
+      { original_filename: "b.pdf", sort_order: 1 },
+      { original_filename: "c.pdf", sort_order: 2 },
+    ]);
+  });
 });
 
 describe("POST /api/notes/:id/files/:fileId/complete", () => {

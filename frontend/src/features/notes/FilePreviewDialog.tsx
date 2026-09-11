@@ -82,7 +82,12 @@ export function FilePreviewDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl">
+      {/* DialogContent is force-mounted (for its close animation), which breaks
+          Radix's own focus-restore-to-trigger behavior — it captures whatever
+          was focused at that one-time mount, not per open/close cycle. The
+          caller (NoteFileList) restores focus itself; suppress Radix's own
+          attempt so it can't clobber that with a stale target. */}
+      <DialogContent className="sm:max-w-3xl" onCloseAutoFocus={(event) => event.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="truncate">{file?.original_filename}</DialogTitle>
         </DialogHeader>

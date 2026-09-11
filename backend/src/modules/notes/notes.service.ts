@@ -184,6 +184,16 @@ export async function createPendingFiles(
   noteId: string,
   files: RequestFileInput[]
 ): Promise<Array<{ file: NoteFile; putUrl: string }>> {
+  // sort_order must continue after any files already on the note (from an
+  // earlier call to this same endpoint) — indexing purely within the current
+  // request collides with existing rows on (note_id, sort_order) as soon as
+  // a caller adds a second batch of files to a note.
+  const { rows: maxRows } = await pool.query<{ max: number | null }>(
+    `SELECT MAX(sort_order) AS max FROM files WHERE note_id = $1`,
+    [noteId]
+  );
+  const nextSortOrder = (maxRows[0]?.max ?? -1) + 1;
+
   const results: Array<{ file: NoteFile; putUrl: string }> = [];
   for (const [index, f] of files.entries()) {
     const key = buildNoteFileKey(noteId, f.original_filename);
@@ -191,7 +201,7 @@ export async function createPendingFiles(
       `INSERT INTO files (note_id, s3_bucket, s3_key, original_filename, mime_type, sort_order)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING ${FILE_COLUMNS}`,
-      [noteId, env.AWS_S3_BUCKET, key, f.original_filename, f.mime_type, index]
+      [noteId, env.AWS_S3_BUCKET, key, f.original_filename, f.mime_type, nextSortOrder + index]
     );
     // INSERT ... RETURNING always returns exactly one row on success.
     const file = rows[0]!;
