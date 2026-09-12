@@ -53,7 +53,7 @@ describe("login", () => {
     );
 
     await userEvent.type(screen.getByLabelText(/email/i), "s@test.edu");
-    await userEvent.type(screen.getByLabelText("Password"), "password123");
+    await userEvent.type(screen.getByLabelText(/^password$/i), "password123");
     await userEvent.click(screen.getByRole("button", { name: /sign in/i }));
 
     expect(await screen.findByText("hello Student")).toBeInTheDocument();
@@ -73,7 +73,7 @@ describe("login", () => {
     renderWithProviders(<LoginForm />);
 
     await userEvent.type(screen.getByLabelText(/email/i), "s@test.edu");
-    await userEvent.type(screen.getByLabelText("Password"), "wrong");
+    await userEvent.type(screen.getByLabelText(/^password$/i), "wrong");
     await userEvent.click(screen.getByRole("button", { name: /sign in/i }));
 
     expect(await screen.findByText(/email or password is incorrect/i)).toBeInTheDocument();

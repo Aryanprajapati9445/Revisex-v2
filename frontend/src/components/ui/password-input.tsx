@@ -1,9 +1,9 @@
 import { Eye, EyeOff } from "lucide-react";
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import { Input } from "./input";
 
-export function PasswordInput({ className, ...props }: React.ComponentProps<"input">) {
+export function PasswordInput({ className, ...props }: ComponentProps<typeof Input>) {
   const [visible, setVisible] = useState(false);
 
   return (
@@ -11,11 +11,15 @@ export function PasswordInput({ className, ...props }: React.ComponentProps<"inp
       <Input type={visible ? "text" : "password"} className={cn("pr-9", className)} {...props} />
       <button
         type="button"
-        onClick={() => setVisible((v) => !v)}
+        onClick={() => setVisible((current) => !current)}
+        className="absolute inset-y-0 right-0 flex w-9 items-center justify-center rounded-control text-text-tertiary transition-colors duration-150 hover:text-text-primary focus-visible:text-text-primary focus-visible:ring-2 focus-visible:ring-ring"
         aria-label={visible ? "Hide password" : "Show password"}
-        className="absolute inset-y-0 right-2 flex items-center text-text-muted"
       >
-        {visible ? <EyeOff size={16} /> : <Eye size={16} />}
+        {visible ? (
+          <EyeOff className="size-4" strokeWidth={2} aria-hidden="true" />
+        ) : (
+          <Eye className="size-4" strokeWidth={2} aria-hidden="true" />
+        )}
       </button>
     </div>
   );
