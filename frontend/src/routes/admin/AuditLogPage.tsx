@@ -2,6 +2,7 @@ import { CheckCircle2, XCircle } from "lucide-react";
 import { useState } from "react";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { ErrorState } from "@/components/layout/ErrorState";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { Pagination } from "@/components/layout/Pagination";
 import { Reveal } from "@/components/motion/Reveal";
 import { Badge } from "@/components/ui/badge";
@@ -40,10 +41,7 @@ function AuditLogTable() {
 
   return (
     <Reveal className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-title font-bold">Audit Log</h1>
-        <p className="mt-1 text-lead text-text-muted">Every write made through the admin area.</p>
-      </div>
+      <PageHeader title="Audit log" description="Every write made through the console, and who made it." />
 
       <div className="flex flex-wrap items-end gap-3 rounded-card bg-surface p-4">
         <div className="flex flex-col gap-1.5">

@@ -2,6 +2,7 @@ import { AlertCircle, Lock, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { EmptyState } from "@/components/layout/EmptyState";
 import { ErrorState } from "@/components/layout/ErrorState";
+import { PageHeader } from "@/components/layout/PageHeader";
 import { Reveal } from "@/components/motion/Reveal";
 import {
   AlertDialog,
@@ -187,17 +188,17 @@ function RolesList() {
   if (roles.isPending) return <div className="text-text-muted">Loading…</div>;
 
   return (
-    <Reveal className="flex max-w-4xl flex-col gap-6">
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <h1 className="text-title font-bold">Roles & Permissions</h1>
-          <p className="mt-1 text-lead text-text-muted">What each admin role may do.</p>
-        </div>
-        <Button type="button" onClick={() => setCreating(true)}>
-          <Plus className="size-4" strokeWidth={2} aria-hidden="true" />
-          Create role
-        </Button>
-      </div>
+    <Reveal className="flex flex-col gap-6">
+      <PageHeader
+        title="Roles & permissions"
+        description="Console capabilities, granted per role. Separate from the domain role that decides what an account administers."
+        action={
+          <Button type="button" onClick={() => setCreating(true)}>
+            <Plus className="size-4" strokeWidth={2} aria-hidden="true" />
+            Create role
+          </Button>
+        }
+      />
 
       {roles.data.length === 0 ? (
         <EmptyState title="No roles yet" />

@@ -13,6 +13,7 @@ const admin = {
   program_id: null,
   branch_id: "b1",
   enrollment_year: null,
+  current_semester: null,
   created_at: "2026-01-01T00:00:00.000Z",
   updated_at: "2026-01-01T00:00:00.000Z",
 };
@@ -77,25 +78,111 @@ describe("routing", () => {
     const header = await screen.findByRole("banner");
     expect(within(header).getByRole("link", { name: /log in/i })).toBeInTheDocument();
     expect(within(header).getByRole("link", { name: /sign up/i })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /moderate/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /console/i })).not.toBeInTheDocument();
   });
 
-  it("reveals the admin links once an admin is signed in", async () => {
+  it("reveals the console link once an admin is signed in", async () => {
     noPrograms();
     authenticateAs(admin);
     renderWithProviders(<AppRoutes />, { route: "/" });
 
-    expect(await screen.findByRole("link", { name: /moderate/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /users/i })).toBeInTheDocument();
+    // Moderation and user management used to be separate top-nav links; they
+    // are sections of the console now, so the site nav has one entry to it.
+    expect(await screen.findByRole("link", { name: /console/i })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /^moderate$/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /^log in$/i })).not.toBeInTheDocument();
   });
 
-  it("sends an authenticated visitor from the landing page to /home", async () => {
+  it("sends a signed-in student from the landing page to their own course", async () => {
     noPrograms();
-    authenticateAs(admin);
+    authenticateAs({ ...admin, id: "u1", full_name: "Diya Nair", role: "student" as never });
+    // The student home reads their branch and semester rather than a generic
+    // programs list, so those are what it asks for on arrival.
+    server.use(
+      http.get(`${API}/api/admin/permissions/me`, () =>
+        HttpResponse.json({ success: true, data: { permissions: [] } })
+      ),
+      http.get(`${API}/api/branches/b1`, () =>
+        HttpResponse.json({
+          success: true,
+          data: {
+            id: "b1",
+            program_id: "p1",
+            code: "CSE",
+            name: "Computer Science",
+            is_active: true,
+            created_at: "2026-01-01T00:00:00.000Z",
+            updated_at: "2026-01-01T00:00:00.000Z",
+          },
+        })
+      ),
+      http.get(`${API}/api/programs/p1`, () =>
+        HttpResponse.json({
+          success: true,
+          data: {
+            id: "p1",
+            code: "BTECH",
+            name: "B.Tech",
+            duration_semesters: 8,
+            is_active: true,
+            created_at: "2026-01-01T00:00:00.000Z",
+            updated_at: "2026-01-01T00:00:00.000Z",
+          },
+        })
+      ),
+      http.get(`${API}/api/subjects`, () =>
+        HttpResponse.json({
+          success: true,
+          data: { items: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 1 } },
+        })
+      ),
+      http.get(`${API}/api/bookmarks`, () =>
+        HttpResponse.json({
+          success: true,
+          data: { items: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 1 } },
+        })
+      ),
+      http.get(`${API}/api/notes`, () =>
+        HttpResponse.json({
+          success: true,
+          data: { items: [], pagination: { page: 1, limit: 20, total: 0, totalPages: 1 } },
+        })
+      )
+    );
     renderWithProviders(<AppRoutes />, { route: "/" });
 
-    expect(await screen.findByRole("heading", { name: /start with a program/i })).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /welcome back, diya/i })).toBeInTheDocument();
+  });
+
+  it("sends a signed-in administrator to the console instead of the student home", async () => {
+    noPrograms();
+    authenticateAs(admin);
+    server.use(
+      http.get(`${API}/api/admin/permissions/me`, () =>
+        HttpResponse.json({ success: true, data: { permissions: [] } })
+      ),
+      http.get(`${API}/api/admin/overview`, () =>
+        HttpResponse.json({
+          success: true,
+          data: {
+            scope: { program_id: null, branch_id: "b1" },
+            totals: {
+              programs: 0, branches: 0, subjects: 0, users: 0, notes: 0,
+              pending_notes: 0, approved_notes: 0, rejected_notes: 0,
+              files: 0, downloads: 0, storage_bytes: 0, uploads_last_7_days: 0,
+            },
+            programs: [],
+            notes_by_type: [],
+            recent_activity: [],
+          },
+        })
+      )
+    );
+    renderWithProviders(<AppRoutes />, { route: "/" });
+
+    // /home is the student home — an admin's home is the console dashboard.
+    expect(await screen.findByRole("heading", { name: /^dashboard$/i })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /start with a program/i })).not.toBeInTheDocument();
   });
 
   it("hides the admin links from a student", async () => {
@@ -106,7 +193,6 @@ describe("routing", () => {
     // My uploads appears for any signed-in user, so it proves the session
     // resolved before we assert the admin links are absent.
     expect(await screen.findByRole("link", { name: /my uploads/i })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /moderate/i })).not.toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: /users/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /console/i })).not.toBeInTheDocument();
   });
 });

@@ -1,11 +1,11 @@
 import { Router } from "express";
-import { ApiError } from "../../lib/apiError.js";
+import { optionalAuth, requireAuth } from "../../middleware/auth.js";
+import * as controller from "./ratings.controller.js";
 
-// Stub — not implemented yet. Wire up ratings.controller.ts / ratings.service.ts
-// following the pattern in modules/programs/ once the design for this
-// resource (validation, auth/scope rules) is settled.
 export const ratingsRouter = Router();
 
-ratingsRouter.use((_req, _res, next) => {
-  next(new ApiError(501, "NOT_IMPLEMENTED", "ratings endpoints not implemented yet"));
-});
+// Reading a score is public — an approved note's rating shows on the browse
+// pages a signed-out visitor can already see. Casting one is not.
+ratingsRouter.get("/:noteId", optionalAuth, controller.getRating);
+ratingsRouter.put("/:noteId", requireAuth, controller.rateNote);
+ratingsRouter.delete("/:noteId", requireAuth, controller.clearRating);

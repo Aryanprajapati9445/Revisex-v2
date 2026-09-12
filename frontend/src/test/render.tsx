@@ -2,9 +2,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, type RenderOptions } from "@testing-library/react";
 import type { ReactElement, ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
+import { CommandPaletteProvider } from "@/components/command-palette/CommandPaletteProvider";
 import { AuthProvider } from "@/features/auth/AuthProvider";
 import { ThemeProvider } from "@/app/ThemeProvider";
-import { CommandPaletteProvider } from "@/hooks/use-command-palette";
 
 function makeTestQueryClient() {
   return new QueryClient({

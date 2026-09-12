@@ -14,14 +14,7 @@ import { formatFileSize } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import type { NoteFile } from "@/lib/api-types";
 import { usePreviewFile } from "./queries";
-
-function isPreviewableImage(mimeType: string): boolean {
-  return mimeType.startsWith("image/");
-}
-
-function isPreviewablePdf(mimeType: string): boolean {
-  return mimeType === "application/pdf";
-}
+import { canPreview, previewKindFor, sandboxFor } from "./preview-kind";
 
 /** Same icon-in-a-circle idiom as EmptyState/ErrorState, reused here so a
  * dead-end inside the dialog (too large, unsupported type, failed to load)
@@ -65,7 +58,8 @@ export function FilePreviewDialog({
   const [imageFailed, setImageFailed] = useState(false);
 
   const tooLarge = file?.size_bytes !== null && (file?.size_bytes ?? 0) > PREVIEW_MAX_BYTES;
-  const previewable = !!file && (isPreviewableImage(file.mime_type) || isPreviewablePdf(file.mime_type));
+  const previewable = !!file && canPreview(file.mime_type);
+  const kind = file ? previewKindFor(file.mime_type) : "none";
 
   // Only fetch the presigned URL for a file we can actually render, and
   // never for one over the size gate — no point spending a request (or, for
@@ -113,10 +107,15 @@ export function FilePreviewDialog({
               title="Couldn't load preview"
               hint={preview.error instanceof ApiError ? preview.error.message : "Please try again."}
             />
-          ) : isPreviewablePdf(file.mime_type) ? (
+          ) : kind === "pdf" || kind === "text" ? (
             <iframe
               src={preview.data.url}
               title={file.original_filename}
+              // Undefined for a PDF (Chrome refuses to render its viewer inside
+              // any sandboxed frame — verified across every sandbox variant),
+              // "" for text — see sandboxFor.
+              sandbox={sandboxFor(kind)}
+              referrerPolicy="no-referrer"
               className="h-[70vh] w-full border-0"
             />
           ) : imageFailed ? (

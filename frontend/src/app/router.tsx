@@ -1,10 +1,13 @@
 import { Navigate, Route, Routes } from "react-router-dom";
-import { AdminShell } from "@/components/layout/AdminShell";
 import { AppShell } from "@/components/layout/AppShell";
+import { ConsoleShell } from "@/components/layout/ConsoleShell";
 import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
 import { AdminUsersPage } from "@/routes/admin/AdminUsersPage";
 import { AuditLogPage } from "@/routes/admin/AuditLogPage";
+import { BulkUploadPage } from "@/routes/admin/BulkUploadPage";
+import { OverviewPage } from "@/routes/admin/OverviewPage";
 import { RolesPage } from "@/routes/admin/RolesPage";
+import { TaxonomyPage } from "@/routes/admin/TaxonomyPage";
 import { BranchesPage } from "@/routes/BranchesPage";
 import { ForgotPasswordPage } from "@/routes/ForgotPasswordPage";
 import { HomePage } from "@/routes/HomePage";
@@ -19,13 +22,13 @@ import { NoteDetailPage } from "@/routes/NoteDetailPage";
 import { OAuthCallbackPage } from "@/routes/OAuthCallbackPage";
 import { OAuthCompletePage } from "@/routes/OAuthCompletePage";
 import { RegisterPage } from "@/routes/RegisterPage";
+import { SavedPage } from "@/routes/SavedPage";
 import { SettingsPage } from "@/routes/SettingsPage";
 import { ProgramsPage } from "@/routes/ProgramsPage";
 import { SearchPage } from "@/routes/SearchPage";
 import { SubjectNotesPage } from "@/routes/SubjectNotesPage";
 import { SubjectsPage } from "@/routes/SubjectsPage";
 import { UploadPage } from "@/routes/UploadPage";
-import { UsersPage } from "@/routes/UsersPage";
 
 export function AppRoutes() {
   return (
@@ -50,26 +53,38 @@ export function AppRoutes() {
           <Route path="search" element={<SearchPage />} />
           <Route path="upload" element={<UploadPage />} />
           <Route path="my-uploads" element={<MyUploadsPage />} />
+          <Route path="saved" element={<SavedPage />} />
           <Route path="settings" element={<SettingsPage />} />
-          <Route path="moderate" element={<ModerationPage />} />
-          <Route path="admin/users" element={<UsersPage />} />
 
           {/*
-            A separate, permission-gated dashboard (see docs/superpowers) —
-            "admin/users" above is the older domain-scope user management
-            (requireRole), left untouched. This tree uses requirePermission
-            on every request, so /admin/accounts is a different path from
-            the legacy /admin/users rather than a collision.
+            The console absorbed both of these. They stay as redirects because
+            they were real URLs people may have bookmarked, and because the
+            review queue is linked from elsewhere in the app.
           */}
-          <Route path="admin" element={<AdminShell />}>
-            <Route index element={<Navigate to="accounts" replace />} />
-            <Route path="accounts" element={<AdminUsersPage />} />
-            <Route path="roles" element={<RolesPage />} />
-            <Route path="audit-log" element={<AuditLogPage />} />
-          </Route>
+          <Route path="moderate" element={<Navigate to="/admin/moderation" replace />} />
+          <Route path="admin/users" element={<Navigate to="/admin/accounts" replace />} />
         </Route>
 
         <Route path="*" element={<NotFoundPage />} />
+      </Route>
+
+      {/*
+        Deliberately outside AppShell: the console runs on its own sidebar
+        layout, not the site's top nav, so it cannot be a child of the shell
+        that renders one. ConsoleShell itself decides what an account may open
+        (see features/admin/capabilities) and every endpoint re-checks.
+      */}
+      <Route element={<ProtectedRoute />}>
+        <Route path="admin" element={<ConsoleShell />}>
+          <Route index element={<OverviewPage />} />
+          <Route path="taxonomy" element={<TaxonomyPage />} />
+          <Route path="moderation" element={<ModerationPage />} />
+          <Route path="upload" element={<BulkUploadPage />} />
+          <Route path="accounts" element={<AdminUsersPage />} />
+          <Route path="roles" element={<RolesPage />} />
+          <Route path="audit-log" element={<AuditLogPage />} />
+          <Route path="*" element={<NotFoundPage />} />
+        </Route>
       </Route>
     </Routes>
   );

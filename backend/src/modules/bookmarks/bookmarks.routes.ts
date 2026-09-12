@@ -1,11 +1,14 @@
 import { Router } from "express";
-import { ApiError } from "../../lib/apiError.js";
+import { requireAuth } from "../../middleware/auth.js";
+import * as controller from "./bookmarks.controller.js";
 
-// Stub — not implemented yet. Wire up bookmarks.controller.ts / bookmarks.service.ts
-// following the pattern in modules/programs/ once the design for this
-// resource (validation, auth/scope rules) is settled.
 export const bookmarksRouter = Router();
 
-bookmarksRouter.use((_req, _res, next) => {
-  next(new ApiError(501, "NOT_IMPLEMENTED", "bookmarks endpoints not implemented yet"));
-});
+// Every route is personal — a bookmark belongs to the caller and there is no
+// surface for reading anyone else's — so the whole router requires auth rather
+// than each handler re-checking.
+bookmarksRouter.use(requireAuth);
+
+bookmarksRouter.get("/", controller.listBookmarks);
+bookmarksRouter.put("/:noteId", controller.addBookmark);
+bookmarksRouter.delete("/:noteId", controller.removeBookmark);

@@ -34,6 +34,22 @@ const envSchema = z.object({
   SMTP_USER: z.string().min(1),
   SMTP_PASS: z.string().min(1),
   MAIL_FROM: z.string().min(1),
+
+  // Point the S3 client somewhere other than AWS — the local MinIO sandbox
+  // (db/docker-compose.yml), or any S3-compatible store. Unset means real AWS,
+  // so production and staging are untouched by this existing.
+  //
+  // MinIO needs path-style addressing: virtual-host style would resolve
+  // <bucket>.localhost, which does not exist.
+  S3_ENDPOINT: z.string().url().optional(),
+  S3_FORCE_PATH_STYLE: z
+    .enum(["true", "false"])
+    .default("false")
+    .transform((v) => v === "true"),
+  // Only read when S3_ENDPOINT is set; against AWS the default provider chain
+  // (instance role, profile, ambient env) stays in charge.
+  S3_ACCESS_KEY_ID: z.string().optional(),
+  S3_SECRET_ACCESS_KEY: z.string().optional(),
 });
 
 const parsed = envSchema.safeParse(process.env);

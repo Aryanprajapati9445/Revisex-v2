@@ -15,7 +15,6 @@ import { branchesRouter } from "./modules/branches/branches.routes.js";
 import { subjectsRouter } from "./modules/subjects/subjects.routes.js";
 import { usersRouter } from "./modules/users/users.routes.js";
 import { notesRouter } from "./modules/notes/notes.routes.js";
-import { filesRouter } from "./modules/files/files.routes.js";
 import { tagsRouter } from "./modules/tags/tags.routes.js";
 import { bookmarksRouter } from "./modules/bookmarks/bookmarks.routes.js";
 import { ratingsRouter } from "./modules/ratings/ratings.routes.js";
@@ -23,6 +22,7 @@ import { commentsRouter } from "./modules/comments/comments.routes.js";
 import { rolesRouter } from "./modules/admin/roles.routes.js";
 import { adminUsersRouter } from "./modules/admin/admin-users.routes.js";
 import { auditRouter } from "./modules/admin/audit.routes.js";
+import { overviewRouter } from "./modules/admin/overview.routes.js";
 
 export function createApp() {
   const app = express();
@@ -54,7 +54,6 @@ export function createApp() {
   app.use("/api/subjects", subjectsRouter);
   app.use("/api/users", usersRouter);
   app.use("/api/notes", notesRouter);
-  app.use("/api/files", filesRouter);
   app.use("/api/tags", tagsRouter);
   app.use("/api/bookmarks", bookmarksRouter);
   app.use("/api/ratings", ratingsRouter);
@@ -66,6 +65,8 @@ export function createApp() {
   app.use("/api/admin", rolesRouter);
   app.use("/api/admin/users", adminUsersRouter);
   app.use("/api/admin/audit-log", auditRouter);
+  // Role-gated rather than permission-gated — see overview.routes.ts.
+  app.use("/api/admin/overview", overviewRouter);
 
   app.use(notFound);
   app.use(errorHandler);

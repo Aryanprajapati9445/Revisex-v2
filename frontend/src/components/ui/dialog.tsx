@@ -72,8 +72,9 @@ function DialogContent({
 }) {
   return (
     <DialogPortal data-slot="dialog-portal">
-      <DialogOverlay />
-      <DialogPrimitive.Content asChild forceMount data-slot="dialog-content" {...props}>
+      {/* Keyed for AnimatePresence — see the same note in alert-dialog.tsx. */}
+      <DialogOverlay key="overlay" />
+      <DialogPrimitive.Content key="content" asChild forceMount data-slot="dialog-content" {...props}>
         <motion.div
           className={cn(
             "fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-panel border border-border bg-surface p-6 shadow-floating outline-none sm:max-w-lg",

@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/features/auth/useAuth";
 import { api } from "@/lib/api-client";
 import type { AuditLogEntry, Paginated, Permission, Role, User, UserRole } from "@/lib/api-types";
@@ -94,10 +94,14 @@ export function useSetUserRoles(userId: string) {
   });
 }
 
-export function useAdminUsers(filters: UserFilters) {
+export function useAdminUsers(filters: UserFilters & { program_id?: string }, enabled = true) {
   return useQuery({
     queryKey: queryKeys.adminUsers(filters),
     queryFn: () => api.get<Paginated<User>>("/api/admin/users", { ...filters }),
+    // Paging or retyping a filter otherwise drops to the pending branch and the
+    // table flashes empty between keystrokes.
+    placeholderData: keepPreviousData,
+    enabled,
   });
 }
 
@@ -116,6 +120,31 @@ export function useCreateAdminUser(filters: UserFilters) {
   return useMutation({
     mutationFn: (input: CreateAdminUserInput) => api.post<User>("/api/admin/users", input),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: queryKeys.adminUsers(filters) }),
+  });
+}
+
+export interface UpdateAdminUserInput {
+  full_name?: string;
+  role?: UserRole;
+  /**
+   * Both are sent on any role change, including as explicit nulls: the
+   * users_role_scope CHECK constraint requires an exact combination per role
+   * (a superuser has neither, a program_admin has program_id only), so leaving
+   * the old value in place is a 422 rather than a partial update.
+   */
+  program_id?: string | null;
+  branch_id?: string | null;
+  enrollment_year?: number | null;
+}
+
+export function useUpdateAdminUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: string; input: UpdateAdminUserInput }) =>
+      api.patch<User>(`/api/admin/users/${id}`, input),
+    // Filters are part of the users key, so invalidating the prefix refreshes
+    // whichever filtered page the console currently shows.
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["admin", "users"] }),
   });
 }
 

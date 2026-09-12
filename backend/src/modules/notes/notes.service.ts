@@ -6,6 +6,15 @@ import { buildNoteFileKey, deleteObjects, getPresignedGetUrl, getPresignedInline
 import { env } from "../../config/env.js";
 import { isCheckViolation, isForeignKeyViolation } from "../../lib/pgError.js";
 import { logger } from "../../lib/logger.js";
+import {
+  NOTE_CARD_COLUMNS,
+  NOTE_COUNT_JOINS,
+  NOTE_SORTS,
+  noteCardJoins,
+  toNoteCard,
+  type NoteCard,
+  type NoteSort,
+} from "../../lib/noteProjection.js";
 
 // Kept in sync with frontend/src/lib/constants.ts's PREVIEW_MAX_BYTES — the
 // frontend gates on this first (so it never even requests a preview URL for
@@ -55,22 +64,31 @@ export interface NoteFilters {
   note_type?: NoteType;
   status?: NoteStatus;
   q?: string;
+  /** Everything in this branch, across its subjects — what a student's home asks for. */
+  branch_id?: string;
+  semester?: number;
+  tag?: string;
+  uploader_id?: string;
 }
 
 export interface ListNotesOptions {
   filters: NoteFilters;
   viewer: AuthUser;
+  sort?: NoteSort;
 }
 
 export async function listNotes(
   options: ListNotesOptions,
   limit: number,
   offset: number
-): Promise<{ rows: Note[]; total: number }> {
-  const { filters, viewer } = options;
+): Promise<{ rows: NoteCard[]; total: number }> {
+  const { filters, viewer, sort = "recent" } = options;
   const conditions: string[] = [];
+
+  // Filter parameters number from $1. The viewer id is appended after them,
+  // because the COUNT below reuses exactly this list and must not be handed a
+  // parameter its own query text never mentions.
   const params: unknown[] = [];
-  let joinBranches = false;
 
   const status = filters.status ?? "approved";
   params.push(status);
@@ -80,11 +98,9 @@ export async function listNotes(
     if (viewer.role === "superuser") {
       // no extra restriction — superuser sees every status everywhere
     } else if (viewer.role === "program_admin") {
-      joinBranches = true;
       params.push(viewer.programId);
       conditions.push(`b.program_id = $${params.length}`);
     } else if (viewer.role === "branch_admin") {
-      joinBranches = true;
       params.push(viewer.branchId);
       conditions.push(`b.id = $${params.length}`);
     } else {
@@ -97,31 +113,63 @@ export async function listNotes(
     params.push(filters.subject_id);
     conditions.push(`n.subject_id = $${params.length}`);
   }
+  if (filters.branch_id) {
+    params.push(filters.branch_id);
+    conditions.push(`b.id = $${params.length}`);
+  }
+  if (filters.semester !== undefined) {
+    params.push(filters.semester);
+    conditions.push(`s.semester = $${params.length}`);
+  }
   if (filters.note_type) {
     params.push(filters.note_type);
     conditions.push(`n.note_type = $${params.length}`);
+  }
+  if (filters.uploader_id) {
+    params.push(filters.uploader_id);
+    conditions.push(`n.uploader_id = $${params.length}`);
+  }
+  if (filters.tag) {
+    params.push(filters.tag);
+    conditions.push(
+      `EXISTS (SELECT 1 FROM note_tags nt JOIN tags t ON t.id = nt.tag_id
+                WHERE nt.note_id = n.id AND t.name = $${params.length})`
+    );
   }
   if (filters.q) {
     params.push(filters.q);
     conditions.push(`n.search_vector @@ plainto_tsquery('english', $${params.length})`);
   }
 
-  const joinClause = joinBranches
-    ? `JOIN subjects s ON s.id = n.subject_id JOIN branches b ON b.id = s.branch_id`
-    : "";
   const where = `WHERE ${conditions.join(" AND ")}`;
+  const viewerParam = params.length + 1;
 
-  const { rows } = await pool.query<Note>(
-    `SELECT ${NOTE_COLUMNS_ALIASED} FROM notes n ${joinClause} ${where}
-     ORDER BY n.created_at DESC LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
-    [...params, limit, offset]
+  const { rows } = await pool.query(
+    `SELECT ${NOTE_CARD_COLUMNS} FROM notes n ${noteCardJoins(viewerParam)} ${where}
+     ORDER BY ${NOTE_SORTS[sort]} LIMIT $${viewerParam + 1} OFFSET $${viewerParam + 2}`,
+    [...params, viewer.id || null, limit, offset]
   );
   const { rows: countRows } = await pool.query<{ count: string }>(
-    `SELECT COUNT(*)::text AS count FROM notes n ${joinClause} ${where}`,
+    `SELECT COUNT(*)::text AS count FROM notes n ${NOTE_COUNT_JOINS} ${where}`,
     params
   );
   // COUNT(*) always returns exactly one row; ?? 0 satisfies noUncheckedIndexedAccess.
-  return { rows, total: Number(countRows[0]?.count ?? 0) };
+  return { rows: rows.map(toNoteCard), total: Number(countRows[0]?.count ?? 0) };
+}
+
+/**
+ * A single note in the same enriched shape the listings use, so the detail
+ * page gets its subject, branch, program, stats and the viewer's own
+ * bookmark/rating in one query instead of the four sequential dependent
+ * requests it used to walk up the tree.
+ */
+export async function getNoteCard(noteId: string, viewerId: string | null): Promise<NoteCard | null> {
+  const { rows } = await pool.query(
+    `SELECT ${NOTE_CARD_COLUMNS} FROM notes n ${noteCardJoins(2)} WHERE n.id = $1`,
+    [noteId, viewerId]
+  );
+  const row = rows[0];
+  return row ? toNoteCard(row) : null;
 }
 
 export async function getNoteById(id: string): Promise<Note | null> {

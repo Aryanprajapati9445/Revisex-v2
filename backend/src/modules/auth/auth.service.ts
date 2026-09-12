@@ -22,7 +22,7 @@ interface UserRow extends User {
   password_hash: string | null;
 }
 
-const USER_COLUMNS = `id, email, full_name, role, program_id, branch_id, enrollment_year, email_verified, created_at, updated_at`;
+const USER_COLUMNS = `id, email, full_name, role, program_id, branch_id, enrollment_year, current_semester, email_verified, created_at, updated_at`;
 
 function toPayload(user: User): JwtPayload {
   return { sub: user.id, role: user.role, program_id: user.program_id, branch_id: user.branch_id };

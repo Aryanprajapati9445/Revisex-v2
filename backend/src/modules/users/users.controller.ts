@@ -29,13 +29,32 @@ export async function getMe(req: Request, res: Response, next: NextFunction) {
   }
 }
 
-const updateMeSchema = z.object({ full_name: z.string().trim().min(1).max(150) });
+const updateMeSchema = z.object({
+  full_name: z.string().trim().min(1).max(150).optional(),
+  current_semester: z.number().int().min(1).max(20).nullable().optional(),
+});
 
 export async function updateMe(req: Request, res: Response, next: NextFunction) {
   try {
     if (!req.user) throw new ApiError(401, "UNAUTHENTICATED", "Authentication required");
-    const { full_name } = updateMeSchema.parse(req.body);
-    const user = await usersService.updateOwnProfile(req.user.id, full_name);
+    const patch = updateMeSchema.parse(req.body);
+
+    // The column CHECK can only enforce the lower bound — the real ceiling is
+    // the student's own program duration, which lives a table away. This is
+    // the same rule subjects_check_semester() applies to subjects, applied
+    // where a CHECK cannot reach.
+    if (patch.current_semester != null) {
+      const duration = await usersService.getProgramDurationForUser(req.user.id);
+      if (duration !== null && patch.current_semester > duration) {
+        throw new ApiError(
+          422,
+          "VALIDATION_ERROR",
+          `Your program runs for ${duration} semesters, so ${patch.current_semester} is not one of them`
+        );
+      }
+    }
+
+    const user = await usersService.updateOwnProfile(req.user.id, patch);
     sendSuccess(res, user);
   } catch (err) {
     next(err);
@@ -45,16 +64,17 @@ export async function updateMe(req: Request, res: Response, next: NextFunction) 
 const listQuerySchema = z.object({
   role: roleEnum.optional(),
   branch_id: z.string().uuid().optional(),
+  q: z.string().trim().min(1).max(120).optional(),
 });
 
 export async function listUsers(req: Request, res: Response, next: NextFunction) {
   try {
     if (!req.user) throw new ApiError(401, "UNAUTHENTICATED", "Authentication required");
 
-    const { role, branch_id } = listQuerySchema.parse(req.query);
+    const { role, branch_id, q } = listQuerySchema.parse(req.query);
     const { page, limit, offset } = parsePagination(req.query);
 
-    const options: usersService.ListUsersOptions = { role, branchId: branch_id };
+    const options: usersService.ListUsersOptions = { role, branchId: branch_id, q };
     if (req.user.role === "branch_admin") {
       options.branchScopeId = req.user.branchId!;
     } else if (req.user.role === "program_admin") {

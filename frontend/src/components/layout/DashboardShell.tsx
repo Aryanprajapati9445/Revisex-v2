@@ -1,16 +1,15 @@
 import {
   FileStack,
   Home,
+  LayoutDashboard,
   LayoutGrid,
   LogOut,
   Moon,
   NotebookPen,
   Search,
   Settings,
-  ShieldCheck,
   Sun,
   Upload,
-  Users,
 } from "lucide-react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useTheme } from "@/app/ThemeProvider";
@@ -23,13 +22,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useMyPermissions } from "@/features/admin/queries";
-import { RoleGate } from "@/features/auth/RoleGate";
+import { useCapabilities } from "@/features/admin/capabilities";
 import { useAuth } from "@/features/auth/useAuth";
 import { useCommandPalette } from "@/hooks/use-command-palette";
 import { cn } from "@/lib/utils";
-
-const ADMIN_ROLES = ["superuser", "program_admin", "branch_admin"] as const;
 
 const NAV_ITEMS = [
   { to: "/home", label: "Home", icon: Home },
@@ -52,7 +48,7 @@ function navClass({ isActive }: { isActive: boolean }) {
 // not just the admin sub-section.
 export function DashboardShell() {
   const { user, logout } = useAuth();
-  const { data: permissions } = useMyPermissions();
+  const capabilities = useCapabilities();
   const navigate = useNavigate();
   const { theme, toggleTheme } = useTheme();
   const { setOpen: setPaletteOpen } = useCommandPalette();
@@ -91,21 +87,16 @@ export function DashboardShell() {
             </NavLink>
           ))}
 
-          <RoleGate allow={[...ADMIN_ROLES]}>
-            <div className="my-2 border-t border-border" />
-            <NavLink to="/moderate" className={navClass} aria-label="Moderate">
-              <ShieldCheck className="size-4 shrink-0" strokeWidth={2} aria-hidden="true" />
-              <span className="hidden sm:inline">Moderate</span>
-            </NavLink>
-            <NavLink to="/admin/users" className={navClass} aria-label="Users">
-              <Users className="size-4 shrink-0" strokeWidth={2} aria-hidden="true" />
-              <span className="hidden sm:inline">Users</span>
-            </NavLink>
-          </RoleGate>
-          {permissions && permissions.size > 0 && (
-            <NavLink to="/admin" className={navClass} aria-label="Admin">
-              <LayoutGrid className="size-4 shrink-0" strokeWidth={2} aria-hidden="true" />
-              <span className="hidden sm:inline">Admin</span>
+          {/*
+            Moderation, users and the admin dashboard used to sit here as
+            three separate links. They are one destination now — the console
+            at /admin, which carries them in its own sidebar — so this nav
+            keeps a single entry to it.
+          */}
+          {(capabilities.isManager || capabilities.canReadUsers) && (
+            <NavLink to="/admin" className={navClass} aria-label="Console">
+              <LayoutDashboard className="size-4 shrink-0" strokeWidth={2} aria-hidden="true" />
+              <span className="hidden sm:inline">Console</span>
             </NavLink>
           )}
         </nav>

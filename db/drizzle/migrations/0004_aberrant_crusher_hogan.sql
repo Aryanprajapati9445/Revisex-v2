@@ -1,0 +1,2 @@
+ALTER TABLE "users" ADD COLUMN "current_semester" smallint;--> statement-breakpoint
+ALTER TABLE "users" ADD CONSTRAINT "users_current_semester_min" CHECK ("users"."current_semester" is null or "users"."current_semester" >= 1);
