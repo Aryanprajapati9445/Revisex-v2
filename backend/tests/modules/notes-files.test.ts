@@ -1,11 +1,12 @@
-import { PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { PutObjectCommand, GetObjectCommand, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import { mockClient } from "aws-sdk-client-mock";
 import request from "supertest";
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../../src/app.js";
 import { s3Client } from "../../src/lib/s3.js";
 import { signAccessToken } from "../../src/lib/jwt.js";
 import { pool } from "../../src/config/db.js";
+import { __resetRateLimitsForTests } from "../../src/middleware/rateLimit.js";
 import { truncateAll } from "../helpers/db.js";
 import { createBranch, createProgram, createSubject, createUserFixture } from "../helpers/fixtures.js";
 
@@ -27,6 +28,8 @@ beforeEach(async () => {
   s3Mock.reset();
   s3Mock.on(PutObjectCommand).resolves({});
   s3Mock.on(GetObjectCommand).resolves({});
+  s3Mock.on(DeleteObjectsCommand).resolves({});
+  __resetRateLimitsForTests();
 });
 
 afterAll(async () => {
@@ -81,6 +84,35 @@ describe("POST /api/notes/:id/files", () => {
       .send({ files: [{ original_filename: "x.pdf", mime_type: "application/pdf" }] });
 
     expect(res.status).toBe(403);
+  });
+
+  it("lets the owner add a second batch of files to the same note without colliding on sort_order", async () => {
+    const { subject, student } = await setup();
+    const note = await createPendingNote(subject.id, student.id);
+
+    const first = await request(app)
+      .post(`/api/notes/${note.id}/files`)
+      .set("Authorization", authHeader(student))
+      .send({ files: [{ original_filename: "a.pdf", mime_type: "application/pdf" }] });
+    expect(first.status).toBe(201);
+
+    const second = await request(app)
+      .post(`/api/notes/${note.id}/files`)
+      .set("Authorization", authHeader(student))
+      .send({ files: [{ original_filename: "b.pdf", mime_type: "application/pdf" }, { original_filename: "c.pdf", mime_type: "application/pdf" }] });
+
+    expect(second.status).toBe(201);
+    expect(second.body.data).toHaveLength(2);
+
+    const { rows } = await pool.query(
+      `SELECT original_filename, sort_order FROM files WHERE note_id = $1 ORDER BY sort_order`,
+      [note.id]
+    );
+    expect(rows).toEqual([
+      { original_filename: "a.pdf", sort_order: 0 },
+      { original_filename: "b.pdf", sort_order: 1 },
+      { original_filename: "c.pdf", sort_order: 2 },
+    ]);
   });
 });
 
@@ -335,6 +367,129 @@ describe("GET /api/notes/:id/files/:fileId/preview", () => {
     const res = await request(app).get(`/api/notes/${note.id}/files/${fileId}/preview`);
     expect(res.status).toBe(404);
   });
+
+  it("lets the owner preview their own pending note's file", async () => {
+    const { subject, student } = await setup();
+    const note = await createPendingNote(subject.id, student.id);
+
+    const requestRes = await request(app)
+      .post(`/api/notes/${note.id}/files`)
+      .set("Authorization", authHeader(student))
+      .send({ files: [{ original_filename: "lecture1.pdf", mime_type: "application/pdf" }] });
+    const fileId = requestRes.body.data[0].file.id;
+
+    await request(app)
+      .post(`/api/notes/${note.id}/files/${fileId}/complete`)
+      .set("Authorization", authHeader(student))
+      .send({ size_bytes: 100 });
+
+    const res = await request(app)
+      .get(`/api/notes/${note.id}/files/${fileId}/preview`)
+      .set("Authorization", authHeader(student));
+
+    expect(res.status).toBe(200);
+    expect(typeof res.body.data.url).toBe("string");
+  });
+
+  it("lets an in-scope branch_admin preview a pending note's file", async () => {
+    const { subject, student, branchAdmin } = await setup();
+    const note = await createPendingNote(subject.id, student.id);
+
+    const requestRes = await request(app)
+      .post(`/api/notes/${note.id}/files`)
+      .set("Authorization", authHeader(student))
+      .send({ files: [{ original_filename: "lecture1.pdf", mime_type: "application/pdf" }] });
+    const fileId = requestRes.body.data[0].file.id;
+
+    await request(app)
+      .post(`/api/notes/${note.id}/files/${fileId}/complete`)
+      .set("Authorization", authHeader(student))
+      .send({ size_bytes: 100 });
+
+    const res = await request(app)
+      .get(`/api/notes/${note.id}/files/${fileId}/preview`)
+      .set("Authorization", authHeader(branchAdmin));
+
+    expect(res.status).toBe(200);
+  });
+
+  it("masks an out-of-scope branch_admin's preview attempt as 404", async () => {
+    const { subject, student, otherBranchAdmin } = await setup();
+    const note = await createPendingNote(subject.id, student.id);
+
+    const requestRes = await request(app)
+      .post(`/api/notes/${note.id}/files`)
+      .set("Authorization", authHeader(student))
+      .send({ files: [{ original_filename: "lecture1.pdf", mime_type: "application/pdf" }] });
+    const fileId = requestRes.body.data[0].file.id;
+
+    await request(app)
+      .post(`/api/notes/${note.id}/files/${fileId}/complete`)
+      .set("Authorization", authHeader(student))
+      .send({ size_bytes: 100 });
+
+    const res = await request(app)
+      .get(`/api/notes/${note.id}/files/${fileId}/preview`)
+      .set("Authorization", authHeader(otherBranchAdmin));
+
+    expect(res.status).toBe(404);
+  });
+
+  it("404s previewing a file that was never completed (still pending upload)", async () => {
+    const { subject, student } = await setup();
+    const note = await createPendingNote(subject.id, student.id);
+
+    const requestRes = await request(app)
+      .post(`/api/notes/${note.id}/files`)
+      .set("Authorization", authHeader(student))
+      .send({ files: [{ original_filename: "lecture1.pdf", mime_type: "application/pdf" }] });
+    const fileId = requestRes.body.data[0].file.id;
+
+    await pool.query(`UPDATE notes SET status = 'approved', reviewed_at = now() WHERE id = $1`, [note.id]);
+
+    const res = await request(app).get(`/api/notes/${note.id}/files/${fileId}/preview`);
+    expect(res.status).toBe(404);
+  });
+
+  it("400s previewing with a non-UUID fileId", async () => {
+    const { subject, student } = await setup();
+    const note = await createPendingNote(subject.id, student.id);
+    await pool.query(`UPDATE notes SET status = 'approved', reviewed_at = now() WHERE id = $1`, [note.id]);
+
+    const res = await request(app).get(`/api/notes/${note.id}/files/not-a-uuid/preview`);
+    expect(res.status).toBe(400);
+  });
+
+  it("rate limits repeated preview requests from the same caller", async () => {
+    const { subject, student } = await setup();
+    const note = await createPendingNote(subject.id, student.id);
+
+    const requestRes = await request(app)
+      .post(`/api/notes/${note.id}/files`)
+      .set("Authorization", authHeader(student))
+      .send({ files: [{ original_filename: "lecture1.pdf", mime_type: "application/pdf" }] });
+    const fileId = requestRes.body.data[0].file.id;
+
+    await request(app)
+      .post(`/api/notes/${note.id}/files/${fileId}/complete`)
+      .set("Authorization", authHeader(student))
+      .send({ size_bytes: 100 });
+
+    await pool.query(`UPDATE notes SET status = 'approved', reviewed_at = now() WHERE id = $1`, [note.id]);
+
+    // The limit (120/5min, see notes.routes.ts) exists to blunt UUID
+    // enumeration against the masked-404 behavior, not to throttle normal
+    // browsing — confirm it actually fires rather than only existing on
+    // paper, and that a legitimate burst under the limit is unaffected.
+    for (let i = 0; i < 120; i++) {
+      const res = await request(app).get(`/api/notes/${note.id}/files/${fileId}/preview`);
+      expect(res.status).toBe(200);
+    }
+
+    const limited = await request(app).get(`/api/notes/${note.id}/files/${fileId}/preview`);
+    expect(limited.status).toBe(429);
+    expect(limited.body.error.code).toBe("RATE_LIMITED");
+  });
 });
 
 describe("GET /api/notes/:id/files", () => {
@@ -409,5 +564,51 @@ describe("GET /api/notes/:id/files", () => {
       .set("Authorization", authHeader(otherBranchAdmin));
 
     expect(res.status).toBe(404);
+  });
+});
+
+describe("DELETE /api/notes/:id", () => {
+  it("deletes the note's files from storage, not just the DB row", async () => {
+    const { subject, student } = await setup();
+    const note = await createPendingNote(subject.id, student.id);
+
+    const requestRes = await request(app)
+      .post(`/api/notes/${note.id}/files`)
+      .set("Authorization", authHeader(student))
+      .send({ files: [{ original_filename: "lecture1.pdf", mime_type: "application/pdf" }] });
+    const fileId = requestRes.body.data[0].file.id;
+    const s3Key = requestRes.body.data[0].file.s3_key;
+
+    await request(app)
+      .post(`/api/notes/${note.id}/files/${fileId}/complete`)
+      .set("Authorization", authHeader(student))
+      .send({ size_bytes: 100 });
+
+    const deleteRes = await request(app)
+      .delete(`/api/notes/${note.id}`)
+      .set("Authorization", authHeader(student));
+    expect(deleteRes.status).toBe(200);
+
+    // The S3 cleanup is deliberately fire-and-forget (see notes.service.ts)
+    // so the delete response doesn't block on storage latency — give it a
+    // tick to actually run before asserting on it.
+    await vi.waitFor(() => {
+      const calls = s3Mock.commandCalls(DeleteObjectsCommand);
+      expect(calls).toHaveLength(1);
+      expect(calls[0]!.args[0]!.input.Delete?.Objects).toEqual([{ Key: s3Key }]);
+    });
+  });
+
+  it("does not call S3 delete when the note had no files", async () => {
+    const { subject, student } = await setup();
+    const note = await createPendingNote(subject.id, student.id);
+
+    const deleteRes = await request(app)
+      .delete(`/api/notes/${note.id}`)
+      .set("Authorization", authHeader(student));
+    expect(deleteRes.status).toBe(200);
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(s3Mock.commandCalls(DeleteObjectsCommand)).toHaveLength(0);
   });
 });

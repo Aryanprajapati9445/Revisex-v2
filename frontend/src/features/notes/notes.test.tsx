@@ -254,6 +254,73 @@ describe("NoteDetailPage", () => {
     open.mockRestore();
   });
 
+  it("returns keyboard focus to the Preview button after closing the dialog with Escape", async () => {
+    server.use(
+      http.get(`${API}/api/notes/n1`, () => HttpResponse.json({ success: true, data: note })),
+      http.get(`${API}/api/notes/n1/files`, () => HttpResponse.json({ success: true, data: [file] })),
+      http.get(`${API}/api/notes/n1/files/f1/preview`, () =>
+        HttpResponse.json({ success: true, data: { url: "https://s3.example/signed-preview" } })
+      ),
+      http.get(`${API}/api/subjects/s1`, () => HttpResponse.json({ success: true, data: subject })),
+      http.get(`${API}/api/branches/b1`, () => HttpResponse.json({ success: true, data: branch })),
+      http.get(`${API}/api/programs/p1`, () => HttpResponse.json({ success: true, data: program }))
+    );
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/notes/:noteId" element={<NoteDetailPage />} />
+      </Routes>,
+      { route: "/notes/n1" }
+    );
+
+    const previewButton = await screen.findByRole("button", { name: /preview/i });
+    await userEvent.click(previewButton);
+    await screen.findByTitle("lecture.pdf");
+
+    await userEvent.keyboard("{Escape}");
+
+    // The dialog's exit animation keeps its focus trap live for a few
+    // frames after close, actively reclaiming focus — the fix re-asserts
+    // focus across animation frames until it wins, so this has to poll
+    // rather than assert immediately.
+    await waitFor(() => expect(previewButton).toHaveFocus());
+  });
+
+  it("keeps the dialog header shrinkable so a long unbroken filename can truncate", async () => {
+    // DialogContent is `display: grid`, and a grid item's default min-width
+    // is its content's intrinsic size, not 0 — an unbreakable string (no
+    // spaces, like a long filename) would force the whole dialog wider
+    // instead of letting `truncate` do anything, unless the header can
+    // shrink below that intrinsic width. jsdom doesn't run real layout, so
+    // this can't assert the visual result (verified separately via
+    // screenshot), but it guards the specific class that makes it possible.
+    const longName = "L".repeat(251) + ".pdf";
+    const longFile = { ...file, id: "f5", original_filename: longName };
+    server.use(
+      http.get(`${API}/api/notes/n1`, () => HttpResponse.json({ success: true, data: note })),
+      http.get(`${API}/api/notes/n1/files`, () => HttpResponse.json({ success: true, data: [longFile] })),
+      http.get(`${API}/api/notes/n1/files/f5/preview`, () =>
+        HttpResponse.json({ success: true, data: { url: "https://s3.example/signed-preview" } })
+      ),
+      http.get(`${API}/api/subjects/s1`, () => HttpResponse.json({ success: true, data: subject })),
+      http.get(`${API}/api/branches/b1`, () => HttpResponse.json({ success: true, data: branch })),
+      http.get(`${API}/api/programs/p1`, () => HttpResponse.json({ success: true, data: program }))
+    );
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/notes/:noteId" element={<NoteDetailPage />} />
+      </Routes>,
+      { route: "/notes/n1" }
+    );
+
+    await userEvent.click(await screen.findByRole("button", { name: /preview/i }));
+    const title = await screen.findByRole("heading", { name: longName });
+
+    expect(title).toHaveClass("truncate");
+    expect(title.closest('[data-slot="dialog-header"]')).toHaveClass("min-w-0");
+  });
+
   it("shows a too-large message instead of fetching a preview for an oversized file", async () => {
     const hugeFile = { ...file, id: "f2", original_filename: "scan.pdf", size_bytes: 30 * 1024 * 1024 };
     let previewRequested = false;
@@ -307,6 +374,60 @@ describe("NoteDetailPage", () => {
     await userEvent.click(await screen.findByRole("button", { name: /preview/i }));
 
     expect(await screen.findByText(/no preview available/i)).toBeInTheDocument();
+  });
+
+  it("previews an image file inline in an img tag", async () => {
+    const imageFile = { ...file, id: "f4", original_filename: "diagram.png", mime_type: "image/png" };
+    server.use(
+      http.get(`${API}/api/notes/n1`, () => HttpResponse.json({ success: true, data: note })),
+      http.get(`${API}/api/notes/n1/files`, () => HttpResponse.json({ success: true, data: [imageFile] })),
+      http.get(`${API}/api/notes/n1/files/f4/preview`, () =>
+        HttpResponse.json({ success: true, data: { url: "https://s3.example/signed-image" } })
+      ),
+      http.get(`${API}/api/subjects/s1`, () => HttpResponse.json({ success: true, data: subject })),
+      http.get(`${API}/api/branches/b1`, () => HttpResponse.json({ success: true, data: branch })),
+      http.get(`${API}/api/programs/p1`, () => HttpResponse.json({ success: true, data: program }))
+    );
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/notes/:noteId" element={<NoteDetailPage />} />
+      </Routes>,
+      { route: "/notes/n1" }
+    );
+
+    await userEvent.click(await screen.findByRole("button", { name: /preview/i }));
+
+    const img = await screen.findByAltText("diagram.png");
+    expect(img).toHaveAttribute("src", "https://s3.example/signed-image");
+  });
+
+  it("shows a couldn't-load-preview message when the preview request fails", async () => {
+    server.use(
+      http.get(`${API}/api/notes/n1`, () => HttpResponse.json({ success: true, data: note })),
+      http.get(`${API}/api/notes/n1/files`, () => HttpResponse.json({ success: true, data: [file] })),
+      http.get(`${API}/api/notes/n1/files/f1/preview`, () =>
+        HttpResponse.json(
+          { success: false, error: { code: "FILE_TOO_LARGE", message: "This file is too large to preview." } },
+          { status: 422 }
+        )
+      ),
+      http.get(`${API}/api/subjects/s1`, () => HttpResponse.json({ success: true, data: subject })),
+      http.get(`${API}/api/branches/b1`, () => HttpResponse.json({ success: true, data: branch })),
+      http.get(`${API}/api/programs/p1`, () => HttpResponse.json({ success: true, data: program }))
+    );
+
+    renderWithProviders(
+      <Routes>
+        <Route path="/notes/:noteId" element={<NoteDetailPage />} />
+      </Routes>,
+      { route: "/notes/n1" }
+    );
+
+    await userEvent.click(await screen.findByRole("button", { name: /preview/i }));
+
+    expect(await screen.findByText(/couldn't load preview/i)).toBeInTheDocument();
+    expect(screen.getByText(/this file is too large to preview\./i)).toBeInTheDocument();
   });
 
   it("renders the neutral not-found panel for a masked note", async () => {

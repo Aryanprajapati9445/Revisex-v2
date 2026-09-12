@@ -2,9 +2,10 @@ import { pool } from "../../config/db.js";
 import { ApiError } from "../../lib/apiError.js";
 import type { AuthUser } from "../../middleware/auth.js";
 import type { Note, NoteType, NoteStatus, NoteFile } from "../../types/index.js";
-import { buildNoteFileKey, getPresignedGetUrl, getPresignedInlineUrl, getPresignedPutUrl } from "../../lib/s3.js";
+import { buildNoteFileKey, deleteObjects, getPresignedGetUrl, getPresignedInlineUrl, getPresignedPutUrl } from "../../lib/s3.js";
 import { env } from "../../config/env.js";
 import { isCheckViolation, isForeignKeyViolation } from "../../lib/pgError.js";
+import { logger } from "../../lib/logger.js";
 
 // Kept in sync with frontend/src/lib/constants.ts's PREVIEW_MAX_BYTES — the
 // frontend gates on this first (so it never even requests a preview URL for
@@ -168,8 +169,28 @@ export async function updateNote(id: string, input: UpdateNoteInput): Promise<No
 }
 
 export async function deleteNote(id: string): Promise<boolean> {
+  // Fetch the note's file keys before deleting — the files rows disappear
+  // via ON DELETE CASCADE the moment the note row goes, so this is the last
+  // chance to know what needs to come out of storage. Without this, the DB
+  // row is gone but the uploaded bytes sit in the bucket forever.
+  const { rows: fileRows } = await pool.query<{ s3_key: string }>(`SELECT s3_key FROM files WHERE note_id = $1`, [id]);
+
   const { rowCount } = await pool.query(`DELETE FROM notes WHERE id = $1`, [id]);
-  return (rowCount ?? 0) > 0;
+  const deleted = (rowCount ?? 0) > 0;
+
+  if (deleted && fileRows.length > 0) {
+    // Deliberately not awaited: the note is already gone from the DB (the
+    // source of truth for what "exists"), so the API response shouldn't
+    // wait on storage latency — a slow or degraded S3 connection would
+    // otherwise make every note deletion hang on it. A failure here just
+    // leaves orphaned bytes in the bucket for a later cleanup pass, logged
+    // so that pass has something to go on.
+    deleteObjects(fileRows.map((r) => r.s3_key)).catch((err) => {
+      logger.error("note_file_cleanup_failed", { noteId: id, cause: err });
+    });
+  }
+
+  return deleted;
 }
 
 const FILE_COLUMNS = `id, note_id, s3_bucket, s3_key, original_filename, mime_type, size_bytes,
@@ -184,6 +205,16 @@ export async function createPendingFiles(
   noteId: string,
   files: RequestFileInput[]
 ): Promise<Array<{ file: NoteFile; putUrl: string }>> {
+  // sort_order must continue after any files already on the note (from an
+  // earlier call to this same endpoint) — indexing purely within the current
+  // request collides with existing rows on (note_id, sort_order) as soon as
+  // a caller adds a second batch of files to a note.
+  const { rows: maxRows } = await pool.query<{ max: number | null }>(
+    `SELECT MAX(sort_order) AS max FROM files WHERE note_id = $1`,
+    [noteId]
+  );
+  const nextSortOrder = (maxRows[0]?.max ?? -1) + 1;
+
   const results: Array<{ file: NoteFile; putUrl: string }> = [];
   for (const [index, f] of files.entries()) {
     const key = buildNoteFileKey(noteId, f.original_filename);
@@ -191,7 +222,7 @@ export async function createPendingFiles(
       `INSERT INTO files (note_id, s3_bucket, s3_key, original_filename, mime_type, sort_order)
        VALUES ($1, $2, $3, $4, $5, $6)
        RETURNING ${FILE_COLUMNS}`,
-      [noteId, env.AWS_S3_BUCKET, key, f.original_filename, f.mime_type, index]
+      [noteId, env.AWS_S3_BUCKET, key, f.original_filename, f.mime_type, nextSortOrder + index]
     );
     // INSERT ... RETURNING always returns exactly one row on success.
     const file = rows[0]!;
