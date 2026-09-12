@@ -2,9 +2,10 @@ import { pool } from "../../config/db.js";
 import { ApiError } from "../../lib/apiError.js";
 import type { AuthUser } from "../../middleware/auth.js";
 import type { Note, NoteType, NoteStatus, NoteFile } from "../../types/index.js";
-import { buildNoteFileKey, getPresignedGetUrl, getPresignedInlineUrl, getPresignedPutUrl } from "../../lib/s3.js";
+import { buildNoteFileKey, deleteObjects, getPresignedGetUrl, getPresignedInlineUrl, getPresignedPutUrl } from "../../lib/s3.js";
 import { env } from "../../config/env.js";
 import { isCheckViolation, isForeignKeyViolation } from "../../lib/pgError.js";
+import { logger } from "../../lib/logger.js";
 
 // Kept in sync with frontend/src/lib/constants.ts's PREVIEW_MAX_BYTES — the
 // frontend gates on this first (so it never even requests a preview URL for
@@ -168,8 +169,28 @@ export async function updateNote(id: string, input: UpdateNoteInput): Promise<No
 }
 
 export async function deleteNote(id: string): Promise<boolean> {
+  // Fetch the note's file keys before deleting — the files rows disappear
+  // via ON DELETE CASCADE the moment the note row goes, so this is the last
+  // chance to know what needs to come out of storage. Without this, the DB
+  // row is gone but the uploaded bytes sit in the bucket forever.
+  const { rows: fileRows } = await pool.query<{ s3_key: string }>(`SELECT s3_key FROM files WHERE note_id = $1`, [id]);
+
   const { rowCount } = await pool.query(`DELETE FROM notes WHERE id = $1`, [id]);
-  return (rowCount ?? 0) > 0;
+  const deleted = (rowCount ?? 0) > 0;
+
+  if (deleted && fileRows.length > 0) {
+    // Deliberately not awaited: the note is already gone from the DB (the
+    // source of truth for what "exists"), so the API response shouldn't
+    // wait on storage latency — a slow or degraded S3 connection would
+    // otherwise make every note deletion hang on it. A failure here just
+    // leaves orphaned bytes in the bucket for a later cleanup pass, logged
+    // so that pass has something to go on.
+    deleteObjects(fileRows.map((r) => r.s3_key)).catch((err) => {
+      logger.error("note_file_cleanup_failed", { noteId: id, cause: err });
+    });
+  }
+
+  return deleted;
 }
 
 const FILE_COLUMNS = `id, note_id, s3_bucket, s3_key, original_filename, mime_type, size_bytes,

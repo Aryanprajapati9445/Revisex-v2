@@ -1,7 +1,7 @@
-import { PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { PutObjectCommand, GetObjectCommand, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import { mockClient } from "aws-sdk-client-mock";
 import request from "supertest";
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createApp } from "../../src/app.js";
 import { s3Client } from "../../src/lib/s3.js";
 import { signAccessToken } from "../../src/lib/jwt.js";
@@ -28,6 +28,7 @@ beforeEach(async () => {
   s3Mock.reset();
   s3Mock.on(PutObjectCommand).resolves({});
   s3Mock.on(GetObjectCommand).resolves({});
+  s3Mock.on(DeleteObjectsCommand).resolves({});
   __resetRateLimitsForTests();
 });
 
@@ -563,5 +564,51 @@ describe("GET /api/notes/:id/files", () => {
       .set("Authorization", authHeader(otherBranchAdmin));
 
     expect(res.status).toBe(404);
+  });
+});
+
+describe("DELETE /api/notes/:id", () => {
+  it("deletes the note's files from storage, not just the DB row", async () => {
+    const { subject, student } = await setup();
+    const note = await createPendingNote(subject.id, student.id);
+
+    const requestRes = await request(app)
+      .post(`/api/notes/${note.id}/files`)
+      .set("Authorization", authHeader(student))
+      .send({ files: [{ original_filename: "lecture1.pdf", mime_type: "application/pdf" }] });
+    const fileId = requestRes.body.data[0].file.id;
+    const s3Key = requestRes.body.data[0].file.s3_key;
+
+    await request(app)
+      .post(`/api/notes/${note.id}/files/${fileId}/complete`)
+      .set("Authorization", authHeader(student))
+      .send({ size_bytes: 100 });
+
+    const deleteRes = await request(app)
+      .delete(`/api/notes/${note.id}`)
+      .set("Authorization", authHeader(student));
+    expect(deleteRes.status).toBe(200);
+
+    // The S3 cleanup is deliberately fire-and-forget (see notes.service.ts)
+    // so the delete response doesn't block on storage latency — give it a
+    // tick to actually run before asserting on it.
+    await vi.waitFor(() => {
+      const calls = s3Mock.commandCalls(DeleteObjectsCommand);
+      expect(calls).toHaveLength(1);
+      expect(calls[0]!.args[0]!.input.Delete?.Objects).toEqual([{ Key: s3Key }]);
+    });
+  });
+
+  it("does not call S3 delete when the note had no files", async () => {
+    const { subject, student } = await setup();
+    const note = await createPendingNote(subject.id, student.id);
+
+    const deleteRes = await request(app)
+      .delete(`/api/notes/${note.id}`)
+      .set("Authorization", authHeader(student));
+    expect(deleteRes.status).toBe(200);
+
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(s3Mock.commandCalls(DeleteObjectsCommand)).toHaveLength(0);
   });
 });
