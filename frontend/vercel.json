@@ -1,4 +1,7 @@
 {
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }],
-  "installCommand": "npm ci --include=dev"
+  "installCommand": "npm ci --include=dev",
+  "env": {
+    "VITE_API_URL": "https://revisex-v2.onrender.com"
+  }
 }
