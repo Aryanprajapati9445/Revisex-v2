@@ -56,7 +56,7 @@ const SettingsPage = lazy(() =>
 const ModerationPage = lazy(() =>
   import("@/routes/ModerationPage").then((m) => ({ default: m.ModerationPage }))
 );
-const UsersPage = lazy(() => import("@/routes/UsersPage").then((m) => ({ default: m.UsersPage })));
+const SavedPage = lazy(() => import("@/routes/SavedPage").then((m) => ({ default: m.SavedPage })));
 const AdminUsersPage = lazy(() =>
   import("@/routes/admin/AdminUsersPage").then((m) => ({ default: m.AdminUsersPage }))
 );
@@ -65,6 +65,15 @@ const RolesPage = lazy(() =>
 );
 const AuditLogPage = lazy(() =>
   import("@/routes/admin/AuditLogPage").then((m) => ({ default: m.AuditLogPage }))
+);
+const OverviewPage = lazy(() =>
+  import("@/routes/admin/OverviewPage").then((m) => ({ default: m.OverviewPage }))
+);
+const TaxonomyPage = lazy(() =>
+  import("@/routes/admin/TaxonomyPage").then((m) => ({ default: m.TaxonomyPage }))
+);
+const BulkUploadPage = lazy(() =>
+  import("@/routes/admin/BulkUploadPage").then((m) => ({ default: m.BulkUploadPage }))
 );
 const NotFoundPage = lazy(() =>
   import("@/routes/NotFoundPage").then((m) => ({ default: m.NotFoundPage }))
