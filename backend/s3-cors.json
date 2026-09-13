@@ -3,8 +3,7 @@
     {
       "AllowedOrigins": [
         "http://localhost:5173",
-        "https://your-app-name.vercel.app",
-        "https://your-custom-domain.com"
+        "https://revisex-v2.vercel.app"
       ],
       "AllowedMethods": ["GET", "PUT"],
       "AllowedHeaders": ["*"],
