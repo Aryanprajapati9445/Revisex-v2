@@ -1,6 +1,8 @@
 import { ScrollText, ShieldCheck, Users } from "lucide-react";
+import { Suspense } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { useMyPermissions } from "@/features/admin/queries";
+import { LoadingState } from "./LoadingState";
 import { cn } from "@/lib/utils";
 
 const SECTIONS = [
@@ -31,7 +33,9 @@ export function AdminShell() {
         ))}
       </nav>
       <div className="min-w-0 flex-1">
-        <Outlet />
+        <Suspense fallback={<LoadingState />}>
+          <Outlet />
+        </Suspense>
       </div>
     </div>
   );
