@@ -11,9 +11,11 @@ import {
   Sun,
   Upload,
 } from "lucide-react";
+import { Suspense } from "react";
 import { Link, NavLink, Outlet, useNavigate } from "react-router-dom";
 import { useTheme } from "@/app/ThemeProvider";
 import { PageTransition } from "@/components/motion/PageTransition";
+import { LoadingState } from "./LoadingState";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -148,7 +150,9 @@ export function DashboardShell() {
       <div className="min-w-0 flex-1">
         <main className="mx-auto max-w-5xl px-6 py-8 sm:px-10">
           <PageTransition>
-            <Outlet />
+            <Suspense fallback={<LoadingState />}>
+              <Outlet />
+            </Suspense>
           </PageTransition>
         </main>
       </div>

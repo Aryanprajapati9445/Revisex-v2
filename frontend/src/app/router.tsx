@@ -1,34 +1,74 @@
+import { lazy } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { ConsoleShell } from "@/components/layout/ConsoleShell";
 import { ProtectedRoute } from "@/features/auth/ProtectedRoute";
-import { AdminUsersPage } from "@/routes/admin/AdminUsersPage";
-import { AuditLogPage } from "@/routes/admin/AuditLogPage";
-import { BulkUploadPage } from "@/routes/admin/BulkUploadPage";
-import { OverviewPage } from "@/routes/admin/OverviewPage";
-import { RolesPage } from "@/routes/admin/RolesPage";
-import { TaxonomyPage } from "@/routes/admin/TaxonomyPage";
-import { BranchesPage } from "@/routes/BranchesPage";
-import { ForgotPasswordPage } from "@/routes/ForgotPasswordPage";
-import { HomePage } from "@/routes/HomePage";
-import { LandingPage } from "@/routes/LandingPage";
-import { LoginPage } from "@/routes/LoginPage";
-import { ResetPasswordPage } from "@/routes/ResetPasswordPage";
-import { VerifyEmailPage } from "@/routes/VerifyEmailPage";
-import { ModerationPage } from "@/routes/ModerationPage";
-import { MyUploadsPage } from "@/routes/MyUploadsPage";
-import { NotFoundPage } from "@/routes/NotFoundPage";
-import { NoteDetailPage } from "@/routes/NoteDetailPage";
-import { OAuthCallbackPage } from "@/routes/OAuthCallbackPage";
-import { OAuthCompletePage } from "@/routes/OAuthCompletePage";
-import { RegisterPage } from "@/routes/RegisterPage";
-import { SavedPage } from "@/routes/SavedPage";
-import { SettingsPage } from "@/routes/SettingsPage";
-import { ProgramsPage } from "@/routes/ProgramsPage";
-import { SearchPage } from "@/routes/SearchPage";
-import { SubjectNotesPage } from "@/routes/SubjectNotesPage";
-import { SubjectsPage } from "@/routes/SubjectsPage";
-import { UploadPage } from "@/routes/UploadPage";
+
+// Route-level code splitting: AppShell/AdminShell/ProtectedRoute are layout
+// chrome needed on every navigation, so they stay in the main bundle. Every
+// page below is its own chunk, fetched on first visit — an anonymous visitor
+// never downloads the admin console, and a signed-in user never downloads
+// the landing page's marketing/animation-heavy component tree.
+const LandingPage = lazy(() => import("@/routes/LandingPage").then((m) => ({ default: m.LandingPage })));
+const LoginPage = lazy(() => import("@/routes/LoginPage").then((m) => ({ default: m.LoginPage })));
+const RegisterPage = lazy(() =>
+  import("@/routes/RegisterPage").then((m) => ({ default: m.RegisterPage }))
+);
+const VerifyEmailPage = lazy(() =>
+  import("@/routes/VerifyEmailPage").then((m) => ({ default: m.VerifyEmailPage }))
+);
+const ForgotPasswordPage = lazy(() =>
+  import("@/routes/ForgotPasswordPage").then((m) => ({ default: m.ForgotPasswordPage }))
+);
+const ResetPasswordPage = lazy(() =>
+  import("@/routes/ResetPasswordPage").then((m) => ({ default: m.ResetPasswordPage }))
+);
+const OAuthCallbackPage = lazy(() =>
+  import("@/routes/OAuthCallbackPage").then((m) => ({ default: m.OAuthCallbackPage }))
+);
+const OAuthCompletePage = lazy(() =>
+  import("@/routes/OAuthCompletePage").then((m) => ({ default: m.OAuthCompletePage }))
+);
+const HomePage = lazy(() => import("@/routes/HomePage").then((m) => ({ default: m.HomePage })));
+const ProgramsPage = lazy(() =>
+  import("@/routes/ProgramsPage").then((m) => ({ default: m.ProgramsPage }))
+);
+const BranchesPage = lazy(() =>
+  import("@/routes/BranchesPage").then((m) => ({ default: m.BranchesPage }))
+);
+const SubjectsPage = lazy(() =>
+  import("@/routes/SubjectsPage").then((m) => ({ default: m.SubjectsPage }))
+);
+const SubjectNotesPage = lazy(() =>
+  import("@/routes/SubjectNotesPage").then((m) => ({ default: m.SubjectNotesPage }))
+);
+const NoteDetailPage = lazy(() =>
+  import("@/routes/NoteDetailPage").then((m) => ({ default: m.NoteDetailPage }))
+);
+const SearchPage = lazy(() => import("@/routes/SearchPage").then((m) => ({ default: m.SearchPage })));
+const UploadPage = lazy(() => import("@/routes/UploadPage").then((m) => ({ default: m.UploadPage })));
+const MyUploadsPage = lazy(() =>
+  import("@/routes/MyUploadsPage").then((m) => ({ default: m.MyUploadsPage }))
+);
+const SettingsPage = lazy(() =>
+  import("@/routes/SettingsPage").then((m) => ({ default: m.SettingsPage }))
+);
+const ModerationPage = lazy(() =>
+  import("@/routes/ModerationPage").then((m) => ({ default: m.ModerationPage }))
+);
+const UsersPage = lazy(() => import("@/routes/UsersPage").then((m) => ({ default: m.UsersPage })));
+const AdminUsersPage = lazy(() =>
+  import("@/routes/admin/AdminUsersPage").then((m) => ({ default: m.AdminUsersPage }))
+);
+const RolesPage = lazy(() =>
+  import("@/routes/admin/RolesPage").then((m) => ({ default: m.RolesPage }))
+);
+const AuditLogPage = lazy(() =>
+  import("@/routes/admin/AuditLogPage").then((m) => ({ default: m.AuditLogPage }))
+);
+const NotFoundPage = lazy(() =>
+  import("@/routes/NotFoundPage").then((m) => ({ default: m.NotFoundPage }))
+);
 
 export function AppRoutes() {
   return (

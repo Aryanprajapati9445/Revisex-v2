@@ -6,7 +6,11 @@ export function PageTransition({ children }: { children: ReactNode }) {
   const location = useLocation();
 
   return (
-    <AnimatePresence mode="wait" initial={false}>
+    // mode="wait" would hold the incoming page off-screen until the
+    // outgoing one finishes its exit animation — an extra ~180ms of
+    // blocking on every navigation for a transition nobody needs
+    // sequenced. Default (sync) crossfades them instead.
+    <AnimatePresence initial={false}>
       <motion.div
         key={location.pathname}
         initial={{ opacity: 0, y: 8 }}
