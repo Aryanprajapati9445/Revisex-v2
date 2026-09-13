@@ -199,8 +199,8 @@ describe("POST /api/auth/resend-otp", () => {
   });
 });
 
-describe("POST /api/auth/login — verification gate", () => {
-  it("rejects login for an unverified account with 403", async () => {
+describe("POST /api/auth/login — unverified accounts", () => {
+  it("logs in an unverified account and reports email_verified: false", async () => {
     const program = await createProgram();
     const branch = await createBranch(program.id);
     await createUserFixture({
@@ -215,8 +215,9 @@ describe("POST /api/auth/login — verification gate", () => {
       .post("/api/auth/login")
       .send({ email: "unverified@test.edu", password: "password123" });
 
-    expect(res.status).toBe(403);
-    expect(res.body.error.code).toBe("EMAIL_NOT_VERIFIED");
+    expect(res.status).toBe(200);
+    expect(res.body.data.user.email_verified).toBe(false);
+    expect(res.body.data.accessToken).toBeTruthy();
   });
 });
 

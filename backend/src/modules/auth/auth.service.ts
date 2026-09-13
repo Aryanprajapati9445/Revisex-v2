@@ -175,10 +175,9 @@ export async function login(email: string, password: string): Promise<{ user: Us
     throw new ApiError(401, "INVALID_CREDENTIALS", "Email or password is incorrect");
   }
 
-  if (!row.email_verified) {
-    throw new ApiError(403, "EMAIL_NOT_VERIFIED", "Please verify your email before logging in");
-  }
-
+  // Unverified accounts may still sign in — email_verified rides along on
+  // `user` so the frontend can prompt for verification from the profile page
+  // instead of blocking access to the app entirely.
   const { password_hash: _drop, ...user } = row;
   return { user, tokens: signTokenPair(toPayload(user)) };
 }

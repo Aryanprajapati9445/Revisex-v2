@@ -10,6 +10,87 @@ import { useAuth } from "@/features/auth/useAuth";
 import { ApiError, api } from "@/lib/api-client";
 import type { User } from "@/lib/api-types";
 
+function VerifyEmailPanel({ email }: { email: string }) {
+  const { verifyEmail, resendOtp } = useAuth();
+  const [code, setCode] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [justSent, setJustSent] = useState(false);
+
+  async function handleSubmit(event: FormEvent) {
+    event.preventDefault();
+    setError(null);
+    setPending(true);
+    try {
+      await verifyEmail(email, code);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  async function handleResend() {
+    setError(null);
+    try {
+      await resendOtp(email);
+      setJustSent(true);
+      setResendCooldown(60);
+      const interval = setInterval(() => {
+        setResendCooldown((s) => {
+          if (s <= 1) {
+            clearInterval(interval);
+            return 0;
+          }
+          return s - 1;
+        });
+      }, 1000);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Something went wrong. Try again.");
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-3 rounded-panel border border-status-pending-fg/30 bg-status-pending-bg p-4">
+      <div>
+        <p className="text-ui font-medium text-status-pending-fg">Verify your email</p>
+        <p className="text-caption text-text-muted">
+          {justSent ? `We sent a new code to ${email}.` : `Enter the 6-digit code we sent to ${email}.`}
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="flex flex-wrap items-end gap-3">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor="profile-verify-code">Verification code</Label>
+          <Input
+            id="profile-verify-code"
+            required
+            maxLength={6}
+            inputMode="numeric"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+            className="w-32"
+          />
+        </div>
+        <Button type="submit" disabled={pending}>
+          {pending ? "Verifying…" : "Verify"}
+        </Button>
+        <Button type="button" variant="ghost" disabled={resendCooldown > 0} onClick={handleResend}>
+          {resendCooldown > 0 ? `Resend code (${resendCooldown}s)` : "Resend code"}
+        </Button>
+      </form>
+
+      {error && (
+        <Alert variant="destructive" role="alert">
+          <AlertCircle />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+    </div>
+  );
+}
+
 const ROLE_LABELS: Record<User["role"], string> = {
   superuser: "Superuser",
   program_admin: "Program admin",
@@ -53,6 +134,8 @@ function SettingsForm({ user }: { user: User }) {
   return (
     <Reveal className="flex max-w-md flex-col gap-6">
       <h1 className="text-title font-bold">Account</h1>
+
+      {!user.email_verified && <VerifyEmailPanel email={user.email} />}
 
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <div className="flex flex-col gap-1.5">
