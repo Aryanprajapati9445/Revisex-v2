@@ -3,11 +3,20 @@
     {
       "AllowedOrigins": [
         "http://localhost:5173",
-        "https://revisex-v2.vercel.app"
+        "http://localhost:4000",
+        "https://revisex-v2.vercel.app",
+        "https://revisex-v2.onrender.com"
       ],
-      "AllowedMethods": ["GET", "PUT"],
-      "AllowedHeaders": ["*"],
-      "ExposeHeaders": ["ETag"],
+      "AllowedMethods": [
+        "GET",
+        "PUT"
+      ],
+      "AllowedHeaders": [
+        "*"
+      ],
+      "ExposeHeaders": [
+        "ETag"
+      ],
       "MaxAgeSeconds": 3000
     }
   ]
