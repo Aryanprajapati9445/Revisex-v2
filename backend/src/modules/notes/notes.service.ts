@@ -107,6 +107,15 @@ export async function listNotes(
       params.push(viewer.id);
       conditions.push(`n.uploader_id = $${params.length}`);
     }
+  } else if (viewer.role === "student" && viewer.branchId) {
+    // Browsing (the default, approved-only view) is scoped to the student's
+    // own program — every branch in it, not just their own — while uploading
+    // stays branch-only (see createNote's isInScope check). A student carries
+    // no program_id of their own (only branch_id), so their program is
+    // resolved through the branch they belong to. Anonymous visitors keep the
+    // unrestricted anonymousViewer used above, so they see the whole catalog.
+    params.push(viewer.branchId);
+    conditions.push(`b.program_id = (SELECT program_id FROM branches WHERE id = $${params.length})`);
   }
 
   if (filters.subject_id) {

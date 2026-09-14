@@ -91,6 +91,48 @@ describe("GET /api/notes visibility", () => {
     expect(res.body.data.items[0].title).toBe("Approved Note");
   });
 
+  it("shows a student approved notes from another branch in their own program", async () => {
+    const { program, subject, student } = await setup();
+    const otherBranch = await createBranch(program.id);
+    const otherSubject = await createSubject(otherBranch.id);
+    await pool.query(
+      `INSERT INTO notes (subject_id, uploader_id, title, status, reviewed_at) VALUES ($1, $2, 'Own Branch', 'approved', now())`,
+      [subject.id, student.id]
+    );
+    await pool.query(
+      `INSERT INTO notes (subject_id, uploader_id, title, status, reviewed_at) VALUES ($1, $2, 'Same Program Other Branch', 'approved', now())`,
+      [otherSubject.id, student.id]
+    );
+
+    const res = await request(app).get("/api/notes").set("Authorization", authHeader(student));
+    expect(res.status).toBe(200);
+    const titles = res.body.data.items.map((n: { title: string }) => n.title);
+    expect(titles).toContain("Own Branch");
+    expect(titles).toContain("Same Program Other Branch");
+  });
+
+  it("hides a student approved notes from a different program", async () => {
+    const { subject, student } = await setup();
+    const otherProgram = await createProgram();
+    const otherBranch = await createBranch(otherProgram.id);
+    const otherSubject = await createSubject(otherBranch.id);
+    const { user: otherStudent } = await createUserFixture({ role: "student", branchId: otherBranch.id });
+    await pool.query(
+      `INSERT INTO notes (subject_id, uploader_id, title, status, reviewed_at) VALUES ($1, $2, 'Own Program', 'approved', now())`,
+      [subject.id, student.id]
+    );
+    await pool.query(
+      `INSERT INTO notes (subject_id, uploader_id, title, status, reviewed_at) VALUES ($1, $2, 'Other Program', 'approved', now())`,
+      [otherSubject.id, otherStudent.id]
+    );
+
+    const res = await request(app).get("/api/notes").set("Authorization", authHeader(student));
+    expect(res.status).toBe(200);
+    const titles = res.body.data.items.map((n: { title: string }) => n.title);
+    expect(titles).toContain("Own Program");
+    expect(titles).not.toContain("Other Program");
+  });
+
   it("lets the uploader see their own pending note via status filter", async () => {
     const { subject, student } = await setup();
     await pool.query(
